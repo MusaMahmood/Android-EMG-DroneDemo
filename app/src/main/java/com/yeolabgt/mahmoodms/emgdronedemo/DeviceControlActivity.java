@@ -100,7 +100,7 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
     private TextView mDataRate;
     private TextView mYfitTextView;
     private Button mExportButton;
-    private Button mFButton;
+//    private Button mFButton;
     private Button mLButton;
     private Button mRButton;
     private long mLastTime;
@@ -204,7 +204,7 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
             }
         });
         mTakeOffLandBt = findViewById(R.id.buttonS);
-        mFButton = findViewById(R.id.buttonF);
+        mDownloadBt = findViewById(R.id.buttonF);
         mLButton = findViewById(R.id.buttonL);
         mRButton = findViewById(R.id.buttonR);
         makeFilterSwitchVisible(false);
@@ -243,9 +243,21 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
             }
         });
         mMediaBeep = MediaPlayer.create(this, R.raw.beep_01a);
-        mFButton.setOnClickListener(new View.OnClickListener() {
+        mDownloadBt.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                mMiniDrone.getLastFlightMedias();
+                mDownloadProgressDialog = new ProgressDialog(DeviceControlActivity.this, R.style.AppCompatAlertDialogStyle);
+                mDownloadProgressDialog.setIndeterminate(true);
+                mDownloadProgressDialog.setMessage("Fetching medias");
+                mDownloadProgressDialog.setCancelable(false);
+                mDownloadProgressDialog.setButton(DialogInterface.BUTTON_NEGATIVE, "Cancel", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        mMiniDrone.cancelGetLastFlightMedias();
+                    }
+                });
+                mDownloadProgressDialog.show();
             }
         });
         mLButton.setOnClickListener(new View.OnClickListener() {
@@ -634,12 +646,10 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
             public void run() {
                 if (visible) {
                     mExportButton.setVisibility(View.VISIBLE);
-                    mFButton.setVisibility(View.VISIBLE);
                     mLButton.setVisibility(View.VISIBLE);
                     mRButton.setVisibility(View.VISIBLE);
                 } else {
                     mExportButton.setVisibility(View.INVISIBLE);
-                    mFButton.setVisibility(View.INVISIBLE);
                     mLButton.setVisibility(View.INVISIBLE);
                     mRButton.setVisibility(View.INVISIBLE);
                 }
