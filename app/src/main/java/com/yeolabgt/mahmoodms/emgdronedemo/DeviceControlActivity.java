@@ -27,6 +27,7 @@ import android.support.v4.content.FileProvider;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
@@ -70,7 +71,6 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
     private GraphAdapter mGraphAdapterCh2PSDA;
     public XYPlotAdapter mTimeDomainPlotAdapter;
     public XYPlotAdapter mFreqDomainPlotAdapter;
-    private double[] fPSD;
     private int mSampleRate = 250;
     public static Redrawer redrawer;
     private final static String TAG = DeviceControlActivity.class.getSimpleName();
@@ -91,7 +91,6 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
     private BluetoothGatt[] mBluetoothGattArray = null;
     private boolean mEEGConnected_2ch = false;
     // Classification
-    private int mNumber2ChPackets = -1;
     private static int mPacketBuffer = 6;
     private int mNumberOfClassifierCalls = 0;
     //Layout - TextViews and Buttons
@@ -101,8 +100,8 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
     private TextView mYfitTextView;
     private Button mExportButton;
 //    private Button mFButton;
-    private Button mLButton;
-    private Button mRButton;
+    private Button mFwdButton;
+    private Button mRotRButton;
     private long mLastTime;
     private int mPSDDataPointsToShow = 0;
     int fPSDStartIndex = 0;
@@ -117,7 +116,7 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
     //Data Variables:
     private int batteryWarning = 20;//
     private double dataRate;
-    private double mSSVEPClass = 0;
+    private double mEMGClass = 0;
     private double mStimulusDelaySeconds = 0;
     //Play Sound:
     MediaPlayer mMediaBeep;
@@ -205,8 +204,8 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
         });
         mTakeOffLandBt = findViewById(R.id.buttonS);
         mDownloadBt = findViewById(R.id.buttonF);
-        mLButton = findViewById(R.id.buttonL);
-        mRButton = findViewById(R.id.buttonR);
+        mFwdButton = findViewById(R.id.buttonFwd);
+        mRotRButton = findViewById(R.id.buttonR);
         makeFilterSwitchVisible(false);
         mLastTime = System.currentTimeMillis();
         ToggleButton toggleButton1 = findViewById(R.id.toggleButtonWheelchairControl);
@@ -260,14 +259,48 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
                 mDownloadProgressDialog.show();
             }
         });
-        mLButton.setOnClickListener(new View.OnClickListener() {
+        mFwdButton.setOnTouchListener(new View.OnTouchListener() {
             @Override
-            public void onClick(View view) {
+            public boolean onTouch(View v, MotionEvent event) {
+                switch (event.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                        v.setPressed(true);
+                        mMiniDrone.setPitch((byte) 50);
+                        mMiniDrone.setFlag((byte) 1);
+                        break;
+
+                    case MotionEvent.ACTION_UP:
+                        v.performClick();
+                        mMiniDrone.setPitch((byte) 0);
+                        mMiniDrone.setFlag((byte) 0);
+                        break;
+                    default:
+                        break;
+                }
+
+                return true;
             }
         });
-        mRButton.setOnClickListener(new View.OnClickListener() {
+        mRotRButton.setOnTouchListener(new View.OnTouchListener() {
             @Override
-            public void onClick(View view) {
+            public boolean onTouch(View v, MotionEvent event) {
+                switch (event.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                        v.setPressed(true);
+                        mMiniDrone.setYaw((byte) 50);
+                        break;
+
+                    case MotionEvent.ACTION_UP:
+                        v.setPressed(false);
+                        mMiniDrone.setYaw((byte) 0);
+                        break;
+
+                    default:
+
+                        break;
+                }
+
+                return true;
             }
         });
         mTakeOffLandBt.setOnClickListener(new View.OnClickListener() {
@@ -335,8 +368,8 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
      */
     public void saveDataFile() throws IOException {
         File root = Environment.getExternalStorageDirectory();
-//        String fileTimeStamp = "EEG_SSVEPData_" + getTimeStamp() + "_" + String.valueOf((int) mSSVEPClass);
-        String fileTimeStamp = "EEG_SSVEPData_" + getTimeStamp() + "_" + String.valueOf(mSampleRate) + "Hz";
+//        String fileTimeStamp = "EEG_SSVEPData_" + getTimeStamp() + "_" + String.valueOf((int) mEMGClass);
+        String fileTimeStamp = "EMG_1CH_" + getTimeStamp() + "_" + String.valueOf(mSampleRate) + "Hz";
         Log.e(TAG, "fileTimeStamp: " + fileTimeStamp);
         if (root.canWrite()) {
             File dir = new File(root.getAbsolutePath() + "/EEGData");
@@ -356,12 +389,21 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
         }
     }
 
+    public void exportFileWithClass(double eegData1) throws IOException {
+        if (fileSaveInitialized) {
+            String[] writeCSVValue = new String[2];
+            writeCSVValue[0] = eegData1 + "";
+            writeCSVValue[1] = mEMGClass + "";
+            csvWriter.writeNext(writeCSVValue, false);
+        }
+    }
+
     public void exportFileWithClass(double eegData1, double eegData2) throws IOException {
         if (fileSaveInitialized) {
             String[] writeCSVValue = new String[3];
             writeCSVValue[0] = eegData1 + "";
             writeCSVValue[1] = eegData2 + "";
-            writeCSVValue[2] = mSSVEPClass + "";
+            writeCSVValue[2] = mEMGClass + "";
             csvWriter.writeNext(writeCSVValue, false);
         }
     }
@@ -369,16 +411,6 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
     @Override
     public void onResume() {
         jmainInitialization(false);
-        double a[] = new double[1000];
-        Arrays.fill(a, 0.0);
-        double b[] = new double[1000];
-        Arrays.fill(b, 0.0);
-        jClassifySSVEP(a, b, 2.28300);
-        double aa[] = new double[8000];
-        Arrays.fill(aa, 0.0);
-        double bb[] = new double[8000];
-        Arrays.fill(bb, 0.0);
-        jClassifySSVEP4k(aa, bb, 2.278);
         if (redrawer != null) {
             redrawer.start();
         }
@@ -443,7 +475,6 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
             fPSDStartIndex = 16;
             fPSDEndIndex = 80;
             Log.e(TAG, "mSampleRate: " + mSampleRate + "Hz");
-            fPSD = jLoadfPSD(mSampleRate);
 
             if(!mGraphInitializedBoolean) setupGraph();
 
@@ -511,7 +542,6 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
             e.printStackTrace();
         }
         stopMonitoringRssiValue();
-        jmainInitialization(true); //Just a technicality; doesn't actually do anything
         super.onDestroy();
     }
 
@@ -646,12 +676,12 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
             public void run() {
                 if (visible) {
                     mExportButton.setVisibility(View.VISIBLE);
-                    mLButton.setVisibility(View.VISIBLE);
-                    mRButton.setVisibility(View.VISIBLE);
+                    mFwdButton.setVisibility(View.VISIBLE);
+                    mRotRButton.setVisibility(View.VISIBLE);
                 } else {
                     mExportButton.setVisibility(View.INVISIBLE);
-                    mLButton.setVisibility(View.INVISIBLE);
-                    mRButton.setVisibility(View.INVISIBLE);
+                    mFwdButton.setVisibility(View.INVISIBLE);
+                    mRotRButton.setVisibility(View.INVISIBLE);
                 }
             }
         });
@@ -690,6 +720,7 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
             }
             getDataRateBytes(mNewEEGdataBytes.length);
             mCh1.handleNewData(mNewEEGdataBytes);
+            writeToDisk24(mCh1.characteristicDataPacketBytes);
             if (mCh1.packetCounter == mPacketBuffer) {
                 addToGraphBuffer(mCh1, mGraphAdapterCh1, true);
             }
@@ -709,6 +740,9 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
                 }
             }
         }
+        // TODO: 10/26/2017 RUN CLASSIFIER 
+
+        // TODO: 10/26/2017 Execute Drone Command
 //        if (mCh1.chEnabled && mCh2.chEnabled) {
 //            mNumber2ChPackets++;
 //            mEEGConnected_2ch = true;
@@ -727,7 +761,7 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
 //        runOnUiThread(new Runnable() {
 //            @Override
 //            public void run() {
-//                String concat = "C:[" + mSSVEPClass + "]";
+//                String concat = "C:[" + mEMGClass + "]";
 //                mSSVEPClassTextView.setText(concat);
 //            }
 //        });
@@ -761,66 +795,6 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
         dataChannel.packetCounter = 0;
     }
 
-    private Runnable mClassifyTaskRunnableThread = new Runnable() {
-        @Override
-        public void run() {
-            double[] PSD2ch;
-            double[] PSDCh1 = new double[mSampleRate];
-            double[] PSDCh2 = new double[mSampleRate];
-            double[] getInstancePSD1 = new double[mSampleRate * 2];
-            double[] getInstancePSD2 = new double[mSampleRate * 2];
-            System.arraycopy(mGraphAdapterCh1.classificationBuffer, mSampleRate * 2, getInstancePSD1, 0, mSampleRate * 2);
-            System.arraycopy(mGraphAdapterCh2.classificationBuffer, mSampleRate * 2, getInstancePSD2, 0, mSampleRate * 2);
-            if(mSampleRate <8000) {
-                PSD2ch = jPSDExtraction(getInstancePSD1, getInstancePSD2, mSampleRate); //250 Hz: For PSDA/each channel[0>mSampleRate|mSampleRate:end]
-                System.arraycopy(PSD2ch, 0, PSDCh1, 0, mSampleRate);
-                System.arraycopy(PSD2ch, mSampleRate, PSDCh2, 0, mSampleRate);
-            } else {
-                Arrays.fill(PSDCh1,0.0);
-                Arrays.fill(PSDCh2,0.0);
-            }
-
-            if (mPSDDataPointsToShow == 0) {
-                mPSDDataPointsToShow = fPSDEndIndex - fPSDStartIndex;
-                mGraphAdapterCh1PSDA.setSeriesHistoryDataPoints(mPSDDataPointsToShow);
-                mGraphAdapterCh2PSDA.setSeriesHistoryDataPoints(mPSDDataPointsToShow);
-                if (mPSDDataPointsToShow > 64)
-                    mFreqDomainPlotAdapter.setXyPlotDomainIncrement(6.0);
-                else mFreqDomainPlotAdapter.setXyPlotDomainIncrement(2.0);
-            }
-            mGraphAdapterCh1PSDA.addDataPointsGeneric(fPSD, PSDCh1, fPSDStartIndex, fPSDEndIndex);
-            mGraphAdapterCh2PSDA.addDataPointsGeneric(fPSD, PSDCh2, fPSDStartIndex, fPSDEndIndex);
-
-            double Y[];
-            if (mSampleRate == 250) {
-                double[] getInstance1 = new double[mSampleRate * 2];
-                double[] getInstance2 = new double[mSampleRate * 2];
-                System.arraycopy(mGraphAdapterCh1.classificationBuffer, mSampleRate * 2, getInstance1, 0, mSampleRate * 2); //8000→end
-                System.arraycopy(mGraphAdapterCh2.classificationBuffer, mSampleRate * 2, getInstance2, 0, mSampleRate * 2);
-                Y = jClassifySSVEP(getInstance1, getInstance2, 1.5); // Size of 501, where first two are
-            } else if (mSampleRate == 4000) {
-                //require last 8k pts:
-                double[] getInstance1 = new double[mSampleRate * 2];
-                double[] getInstance2 = new double[mSampleRate * 2];
-                System.arraycopy(mGraphAdapterCh1.classificationBuffer, mSampleRate * 2, getInstance1, 0, mSampleRate * 2); //8000→end
-                System.arraycopy(mGraphAdapterCh2.classificationBuffer, mSampleRate * 2, getInstance2, 0, mSampleRate * 2);
-                Y = jClassifySSVEP4k(getInstance1, getInstance2, 1.5);
-            } else {
-                Y = new double[]{0.0, 0.0};
-            }
-            mNumberOfClassifierCalls++;
-            Log.e(TAG, "Classifier Output: [#" + String.valueOf(mNumberOfClassifierCalls) + "::" + String.valueOf(Y[0]) + "," + String.valueOf(Y[1]) + "]");
-            final String s = "SSVEP cPSDA\n: [" + String.valueOf(Y[1]) + "]";
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    mYfitTextView.setText(s);
-                }
-            });
-            //TODO: Execute Drone Command
-        }
-    };
-
     private void updateTrainingRoutine(int dataPoints) {
         if (dataPoints % mSampleRate == 0 && mRunTrainingBool) {
             int second = dataPoints / mSampleRate;
@@ -828,32 +802,40 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
             int eventSecondCountdown = 0;
             if (second >= 0 && second < mSDS) {
                 eventSecondCountdown = mSDS - second;
-                updateTrainingPrompt("EYES CLOSED");
+                updateTrainingPrompt("Relax hand");
                 updateTrainingPromptColor(Color.GREEN);
-                mSSVEPClass = 0;
+                mEMGClass = 0;
             } else if (second >= mSDS && second < 2 * mSDS) {
                 eventSecondCountdown = 2 * mSDS - second;
-                updateTrainingPrompt("15.15Hz");
-                mSSVEPClass = 1;
+                updateTrainingPrompt("1");
+                mEMGClass = 1;
             } else if (second >= 2 * mSDS && second < 3 * mSDS) {
                 eventSecondCountdown = 3 * mSDS - second;
-                updateTrainingPrompt("16.67hz");
-                mSSVEPClass = 2;
+                updateTrainingPrompt("Relax hand");
+                updateTrainingPromptColor(Color.GREEN);
+                mEMGClass = 0;
             } else if (second >= 3 * mSDS && second < 4 * mSDS) {
                 eventSecondCountdown = 4 * mSDS - second;
-                updateTrainingPrompt("18.51Hz");
-                mSSVEPClass = 3;
+                updateTrainingPrompt("2");
+                mEMGClass = 2;
             } else if (second >= 4 * mSDS && second < 5 * mSDS) {
                 eventSecondCountdown = 5 * mSDS - second;
-                updateTrainingPrompt("20.00Hz");
-                mSSVEPClass = 4;
+                updateTrainingPrompt("Relax hand");
+                updateTrainingPromptColor(Color.GREEN);
+                mEMGClass = 0;
             } else if (second >= 5 * mSDS && second < 6 * mSDS) {
                 eventSecondCountdown = 6 * mSDS - second;
+                updateTrainingPrompt("3");
+                updateTrainingPromptColor(Color.GREEN);
+                mEMGClass = 3;
+            } else if (second >= 6 * mSDS && second <7 * mSDS) {
+                eventSecondCountdown = 7*mSDS - second;
                 updateTrainingPrompt("Stop!");
                 updateTrainingPromptColor(Color.RED);
-                mSSVEPClass = 0;
+                mEMGClass = 0;
                 disconnectAllBLE();
             }
+
             if (eventSecondCountdown == mSDS) {
                 mMediaBeep.start();
             }
@@ -918,6 +900,26 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
 //            mBluetoothLe.writeCharacteristic(mBluetoothGattArray[mWheelchairGattIndex], mLedWheelchairControlService.getCharacteristic(AppConstant.CHAR_WHEELCHAIR_CONTROL), bytes);
 //        }
 //    }
+
+    private void writeToDisk24(byte[] ch1Bytes) {
+        if(byteResolution==3) {
+            for (int i = 0; i < ch1Bytes.length / 3; i++) {
+                try {
+                    exportFileWithClass(DataChannel.bytesToDouble(ch1Bytes[3 * i], ch1Bytes[3 * i + 1], ch1Bytes[3 * i + 2]));
+                } catch (IOException e) {
+                    Log.e("IOException", e.toString());
+                }
+            }
+        } else if (byteResolution==2) {
+            for (int i = 0; i < ch1Bytes.length / 2; i++) {
+                try {
+                    exportFileWithClass(DataChannel.bytesToDouble(ch1Bytes[2 * i], ch1Bytes[2 * i + 1]));
+                } catch (IOException e) {
+                    Log.e("IOException", e.toString());
+                }
+            }
+        }
+    }
 
     private void writeToDisk24(byte[] ch1Bytes, byte[] ch2Bytes) {
         if(byteResolution==3) {
@@ -1249,12 +1251,12 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
 
     public native int jmainInitialization(boolean b);
 
-    public native double[] jClassifySSVEP(double[] a, double[] b, double c);
-
-    public native double[] jClassifySSVEP4k(double[] a, double[] b, double c);
-
-    public native double[] jPSDExtraction(double[] a, double[] b, int sampleRate);
-
-    public native double[] jLoadfPSD(int sampleRate);
+//    public native double[] jClassifySSVEP(double[] a, double[] b, double c);
+//
+//    public native double[] jClassifySSVEP4k(double[] a, double[] b, double c);
+//
+//    public native double[] jPSDExtraction(double[] a, double[] b, int sampleRate);
+//
+//    public native double[] jLoadfPSD(int sampleRate);
 
 }
