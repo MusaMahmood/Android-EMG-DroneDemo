@@ -20,7 +20,7 @@ add_library( # Sets the name of the library.
              src/main/cpp/native-lib.cpp )
 
 add_library( # Sets the name of the library.
-              ssvep-lib
+              emg1c-lib
 
               # Sets the library as a shared library.
               SHARED
@@ -30,6 +30,8 @@ add_library( # Sets the name of the library.
 
                 # Executor
                 src/main/cpp/jniExecutor.cpp
+                src/main/cpp/ctrainingRoutine1ch.cpp
+                src/main/cpp/classifyArmEMG1ch.cpp
 
                 src/main/cpp/rt_nonfinite.cpp
                 src/main/cpp/rtGetInf.cpp
@@ -57,7 +59,7 @@ find_library( # Sets the name of the path variable.
 
 target_link_libraries( # Specifies the target library.
                        # ### NOTE YOU HAVE TO INDIVIDUALLY LINK EACH LIBRARY!
-                       ssvep-lib
+                       emg1c-lib
 
                        # Links the target library to the log library
                        # included in the NDK.

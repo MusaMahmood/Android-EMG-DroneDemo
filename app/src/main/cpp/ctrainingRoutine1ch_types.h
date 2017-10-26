@@ -2,20 +2,20 @@
 // Academic License - for use in teaching, academic research, and meeting
 // course requirements at degree granting institutions only.  Not for
 // government, commercial, or other organizational use.
-// File: classifySSVEP_types.h
+// File: ctrainingRoutine1ch_types.h
 //
 // MATLAB Coder version            : 3.3
-// C/C++ source code generated on  : 28-Sep-2017 12:01:11
+// C/C++ source code generated on  : 26-Oct-2017 16:16:21
 //
-#ifndef CLASSIFYSSVEP_TYPES_H
-#define CLASSIFYSSVEP_TYPES_H
+#ifndef CTRAININGROUTINE1CH_TYPES_H
+#define CTRAININGROUTINE1CH_TYPES_H
 
 // Include Files
 #include "rtwtypes.h"
 #endif
 
 //
-// File trailer for classifySSVEP_types.h
+// File trailer for ctrainingRoutine1ch_types.h
 //
 // [EOF]
 //
