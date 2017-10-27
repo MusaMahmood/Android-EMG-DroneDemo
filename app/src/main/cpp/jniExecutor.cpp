@@ -49,13 +49,9 @@ Java_com_yeolabgt_mahmoodms_emgdronedemo_DeviceControlActivity_jTrainingRoutine(
 extern "C" {
 JNIEXPORT jint JNICALL
 Java_com_yeolabgt_mahmoodms_emgdronedemo_DeviceControlActivity_jmainInitialization(
-        JNIEnv *env, jobject obj, jboolean terminate) {
-    if (!(bool) terminate) {
+        JNIEnv *env, jobject obj) {
         ctrainingRoutine1ch_initialize();
         classifyArmEMG1ch_initialize();
         return 0;
-    } else {
-        return -1;
-    }
 }
 }

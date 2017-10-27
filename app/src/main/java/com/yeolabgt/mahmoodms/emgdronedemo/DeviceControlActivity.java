@@ -1,5 +1,6 @@
 package com.yeolabgt.mahmoodms.emgdronedemo;
 
+import android.annotation.SuppressLint;
 import android.app.ActionBar;
 import android.app.Activity;
 import android.app.ProgressDialog;
@@ -40,7 +41,6 @@ import android.widget.ToggleButton;
 import com.androidplot.Plot;
 import com.androidplot.util.Redrawer;
 import com.beele.BluetoothLe;
-import com.google.common.primitives.Doubles;
 import com.opencsv.CSVReader;
 import com.opencsv.CSVWriter;
 import com.parrot.arsdk.arcommands.ARCOMMANDS_MINIDRONE_MEDIARECORDEVENT_PICTUREEVENTCHANGED_ERROR_ENUM;
@@ -95,7 +95,7 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
     //Connecting to Multiple Devices
     private String[] deviceMacAddresses = null;
     private BluetoothGatt[] mBluetoothGattArray = null;
-    private boolean mEEGConnected_2ch = false;
+//    private boolean mEEGConnected_2ch = false;
     // Classification
     private static int mPacketBuffer = 6;
     //Layout - TextViews and Buttons
@@ -127,31 +127,28 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
     private ProgressDialog mDownloadProgressDialog;
     private Button mTakeOffLandBt;
     private Button mDownloadBt;
-    private Button mFwdButton;
-    private Button mRotRButton;
     private TextView mBatteryLevelDrone;
     private int mNbMaxDownload;
     private int mCurrentDownloadIndex;
 
     //Classification:
-    ClassDataAnalysis TrainingData;
+    static ClassDataAnalysis TrainingData;
     private double mEMGClass = 0;
     private double mStimulusDelaySeconds = 0;
     private TextView mYfitTextView;
     private TextView mTrainingInstructions;
     private int mNumberOfClassifierCalls = 0;
-    private int mPSDDataPointsToShow = 0;
     int fPSDStartIndex = 0;
     int fPSDEndIndex = 100;
     //Filestuffs:
-    private File trainingDataFile;
-    private File mFileClassificationParams;
-    private CSVWriter mKNNcsvWriter;
-    private double[] CUSTOM_KNN_PARAMS;
-    private boolean mUseCustomParams = false;
+    private static File trainingDataFile;
+    private static CSVWriter mKNNcsvWriter;
+    private static double[] CUSTOM_KNN_PARAMS;
+    private static boolean mUseCustomParams = false;
     private double[] mYfitArray = new double[5];
     private TextView mEMGClassText;
 
+    @SuppressLint("ClickableViewAccessibility")
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -218,8 +215,6 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
         });
         mTakeOffLandBt = findViewById(R.id.buttonS);
         mDownloadBt = findViewById(R.id.buttonF);
-        mFwdButton = findViewById(R.id.buttonFwd);
-        mRotRButton = findViewById(R.id.buttonR);
         makeFilterSwitchVisible(false);
         mLastTime = System.currentTimeMillis();
         ToggleButton toggleButton1 = findViewById(R.id.toggleButtonWheelchairControl);
@@ -274,7 +269,7 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
                 mDownloadProgressDialog.show();
             }
         });
-        mFwdButton.setOnTouchListener(new View.OnTouchListener() {
+        findViewById(R.id.buttonFwd).setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
                 switch (event.getAction()) {
@@ -285,18 +280,16 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
                         break;
 
                     case MotionEvent.ACTION_UP:
-                        v.performClick();
                         mMiniDrone.setPitch((byte) 0);
                         mMiniDrone.setFlag((byte) 0);
                         break;
                     default:
                         break;
                 }
-
                 return true;
             }
         });
-        mRotRButton.setOnTouchListener(new View.OnTouchListener() {
+        findViewById(R.id.buttonR).setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
                 switch (event.getAction()) {
@@ -357,9 +350,48 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
         }
     }
 
-//    private void resetActivity() {
-//        recreate();
-//    }
+    private void sendDroneCommand(int command) {
+        switch (command) {
+            case 0:
+                //Do nothing:
+                if(mMiniDrone!=null) {
+                    //Reset conditions:
+                    mMiniDrone.setYaw((byte) 0);
+                    mMiniDrone.setPitch((byte) 0);
+                    mMiniDrone.setFlag((byte) 0);
+                }
+                break;
+            case 1:
+                //TakeoffLand:
+                if(mMiniDrone!=null) {
+                    switch (mMiniDrone.getFlyingState()) {
+                        case ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_LANDED:
+                            mMiniDrone.takeOff();
+                            break;
+                        case ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_FLYING:
+                        case ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_HOVERING:
+                            mMiniDrone.land();
+                            break;
+                        default:
+                    }
+                }
+                break;
+            case 2:
+                //RotR
+                if(mMiniDrone!=null) {
+                    mMiniDrone.setYaw((byte) 50);
+                }
+                break;
+            case 3:
+                if(mMiniDrone!=null) {
+                    mMiniDrone.setPitch((byte) 50);
+                    mMiniDrone.setFlag((byte) 1);
+                }
+                break;
+            default:
+                break;
+        }
+    }
 
     public String getTimeStamp() {
         return new SimpleDateFormat("yyyy.MM.dd_HH.mm.ss", Locale.US).format(new Date());
@@ -379,6 +411,7 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
     }
 
     public void openParamDataFile() {
+        File mFileClassificationParams;
         File root = Environment.getExternalStorageDirectory();
         if (root.canWrite()) {
             File dir = new File(root.getAbsolutePath() + "/EMG_Training_Params");
@@ -401,7 +434,6 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
                     e.printStackTrace();
                 }
             }
-            //TODO READ using FileReader; SAVE using FileWriter
         }
     }
 
@@ -443,19 +475,9 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
         }
     }
 
-//    public void exportFileWithClass(double eegData1, double eegData2) throws IOException {
-//        if (fileSaveInitialized) {
-//            String[] writeCSVValue = new String[3];
-//            writeCSVValue[0] = eegData1 + "";
-//            writeCSVValue[1] = eegData2 + "";
-//            writeCSVValue[2] = mEMGClass + "";
-//            csvWriter.writeNext(writeCSVValue, false);
-//        }
-//    }
-
     @Override
     public void onResume() {
-        jmainInitialization(false);
+        jmainInitialization();
         if (redrawer != null) {
             redrawer.start();
         }
@@ -545,8 +567,8 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
         // Initialize our XYPlot reference:
         mGraphAdapterCh1 = new GraphAdapter(mSampleRate * 4, "EEG Data Ch 1", false, Color.BLUE, mSampleRate * 4); //Color.parseColor("#19B52C") also, RED, BLUE, etc.
         mGraphAdapterCh2 = new GraphAdapter(mSampleRate * 4, "EEG Data Ch 2", false, Color.RED, mSampleRate * 4); //Color.parseColor("#19B52C") also, RED, BLUE, etc.
-        mGraphAdapterCh1PSDA = new GraphAdapter(mPSDDataPointsToShow, "EEG Power Spectrum (Ch1)", false, Color.BLUE, 0);
-        mGraphAdapterCh2PSDA = new GraphAdapter(mPSDDataPointsToShow, "EEG Power Spectrum (Ch2)", false, Color.RED, 0);
+        mGraphAdapterCh1PSDA = new GraphAdapter(0, "EEG Power Spectrum (Ch1)", false, Color.BLUE, 0);
+        mGraphAdapterCh2PSDA = new GraphAdapter(0, "EEG Power Spectrum (Ch2)", false, Color.RED, 0);
         //PLOT CH1 By default
         mGraphAdapterCh1.plotData = true;
         mGraphAdapterCh1PSDA.plotData = true;
@@ -722,12 +744,8 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
             public void run() {
                 if (visible) {
                     mExportButton.setVisibility(View.VISIBLE);
-                    mFwdButton.setVisibility(View.VISIBLE);
-                    mRotRButton.setVisibility(View.VISIBLE);
                 } else {
                     mExportButton.setVisibility(View.INVISIBLE);
-                    mFwdButton.setVisibility(View.INVISIBLE);
-                    mRotRButton.setVisibility(View.INVISIBLE);
                 }
             }
         });
@@ -738,9 +756,11 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
         Log.i(TAG, "onCharacteristicRead");
         if (status == BluetoothGatt.GATT_SUCCESS) {
             if (AppConstant.CHAR_BATTERY_LEVEL.equals(characteristic.getUuid())) {
-                int batteryLevel = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT16, 0);
-                updateBatteryStatus(batteryLevel);
-                Log.i(TAG, "Battery Level :: " + batteryLevel);
+                if(characteristic.getValue().length>1) {
+                    int batteryLevel = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT16, 0);
+                    updateBatteryStatus(batteryLevel);
+                    Log.i(TAG, "Battery Level :: " + batteryLevel);
+                }
             }
         } else {
             Log.e(TAG, "onCharacteristic Read Error" + status);
@@ -780,22 +800,19 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
             byte[] mNewEEGdataBytes = characteristic.getValue();
             int byteLength = mNewEEGdataBytes.length;
             getDataRateBytes(byteLength);
-            if (mEEGConnected_2ch) {
+//            if (mEEGConnected_2ch) {
                 mCh2.handleNewData(mNewEEGdataBytes);
                 if (mCh2.packetCounter == mPacketBuffer) {
                     addToGraphBuffer(mCh2, mGraphAdapterCh2, false);
                 }
-            }
+//            }
         }
-        // TODO: 10/26/2017 Move to it's own thread
         if (mCh1PacketCount % 10 == 0 && mCh1PacketCount > 120) {
             Log.i(TAG, "[" + String.valueOf(mNumberOfClassifierCalls + 1) + "] CALLING CLASSIFIER FUNCTION!");
             Thread t = new Thread(mRunnableClassifyTaskThread);
             mNumberOfClassifierCalls++;
             t.start();
         }
-
-        // TODO: 10/26/2017 Execute Drone Command
 
         runOnUiThread(new Runnable() {
             @Override
@@ -846,7 +863,7 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
                 mEMGClass = 0;
             } else if (second >= mSDS && second < 2 * mSDS) {
                 eventSecondCountdown = 2 * mSDS - second;
-                updateTrainingPrompt("Close Hand");
+                updateTrainingPrompt("Rotate Hand Right");
                 mEMGClass = 1;
             } else if (second >= 2 * mSDS && second < 3 * mSDS) {
                 eventSecondCountdown = 3 * mSDS - second;
@@ -855,7 +872,7 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
                 mEMGClass = 0;
             } else if (second >= 3 * mSDS && second < 4 * mSDS) {
                 eventSecondCountdown = 4 * mSDS - second;
-                updateTrainingPrompt("Ring Finger");
+                updateTrainingPrompt("Close Hand");
                 mEMGClass = 2;
             } else if (second >= 4 * mSDS && second < 5 * mSDS) {
                 eventSecondCountdown = 5 * mSDS - second;
@@ -872,7 +889,6 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
                 updateTrainingPrompt("Stop!");
                 updateTrainingPromptColor(Color.RED);
                 mEMGClass = 0;
-                // TODO: 10/26/2017 RUN TRAINING:
             } else if (second >= 7 * mSDS && second < 8 * mSDS) {
                 eventSecondCountdown = 8*mSDS - second;
                 updateTrainingPrompt("Stop!");
@@ -881,7 +897,26 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
                 TrainTask trainTask = new TrainTask();
                 Log.e(TAG, "CALLING TRAINING FUNCTION - ASYNCTASK!");
                 trainTask.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
-                mRunTrainingBool = false;
+                if(mUseCustomParams) {
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            Toast.makeText(getApplicationContext(), "Training Data Loaded", Toast.LENGTH_LONG).show();
+                        }
+                    });
+                    mRunTrainingBool = false;
+                } else {
+                    if(TrainingData!=null) {
+                        if (TrainingData.ERROR) {
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    Toast.makeText(getApplicationContext(), "TrainingData.ERROR \n Failed to Load Training Data", Toast.LENGTH_LONG).show();
+                                }
+                            });
+                        }
+                    }
+                }
             }
             if (eventSecondCountdown == mSDS) {
                 mMediaBeep.start();
@@ -953,6 +988,7 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
             // TODO: 10/26/2017 Control Drone:
             if(mDronePresent && mDroneControl) {
                 //Send command based on Y returned.
+                sendDroneCommand((int)Y);
             }
         } else {
             boolean b = mYfitArray[0] == 0.0 && mYfitArray[1] == 0.0 && mYfitArray[2] == 0.0
@@ -979,7 +1015,7 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
         return b0 && b1;
     }
 
-    public void readFromTrainingFile(File f) {
+    public static void readFromTrainingFile(File f) {
         try {
             CSVReader csvReader = new CSVReader(new FileReader(f), ',');
             List<String[]> strings = csvReader.readAll();
@@ -989,7 +1025,6 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
                 double[] trainingDataAll = ClassDataAnalysis.concatAll();
                 if (trainingDataAll != null) {
                     Log.e(TAG, "trainingDataAll.length = " + String.valueOf(trainingDataAll.length));
-                    // TODO: 10/26/2017 add jTrainingRoutine1ch
                     CUSTOM_KNN_PARAMS = jTrainingRoutine(trainingDataAll);
                     Log.e(TAG, "CUSTOM_KNN_PARAMS length: "+String.valueOf(CUSTOM_KNN_PARAMS.length));
                 }
@@ -1003,30 +1038,26 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
                 }
                 mUseCustomParams = true;
                 Log.e(TAG, "NOW USING CUSTOM PARAMS!");
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        Toast.makeText(DeviceControlActivity.this, "Custom Training Data Loaded", Toast.LENGTH_SHORT).show();
-                    }
-                });
+                Log.e(TAG,"Custom Training Data Loaded");
             } else {
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        Toast.makeText(DeviceControlActivity.this, "Unable to Load Training Data! \n Please Run Training Session Again", Toast.LENGTH_LONG).show();
-                    }
-                });
+                Log.e(TAG,"Unable to Load Training Data! :: Please Run Training Session Again");
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    private class TrainTask extends AsyncTask<Void, Void, Void> {
+
+    private static class TrainTask extends AsyncTask<Void, Void, Void> {
         @Override
         protected Void doInBackground(Void... voids) {
             readFromTrainingFile(trainingDataFile);
             return null;
+        }
+
+        @Override
+        protected void onProgressUpdate(Void... values) {
+            super.onProgressUpdate(values);
         }
 
         @Override
@@ -1385,14 +1416,12 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
         System.loadLibrary("emg1c-lib");
     }
 
-    public native int jmainInitialization(boolean b);
+    public native int jmainInitialization();
 
-//    public native double[] jClassifySSVEP(double[] a, double[] b, double c);
-//
-//    public native double[] jClassifySSVEP4k(double[] a, double[] b, double c);
-//
+//    public native int jmainTermination();
+
     public native double jClassifyUsingKNN(double[] a, double[] b);
-//
-    public native double[] jTrainingRoutine(double[] data);
+
+    public static native double[] jTrainingRoutine(double[] data);
 
 }
