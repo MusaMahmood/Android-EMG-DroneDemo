@@ -221,35 +221,39 @@ public class MainActivity extends Activity {
         super.onResume();
         /*
          * Ensures Bluetooth is enabled on the device - if not enabled - fire intent to display a
-         * dialog to ask permissioo enable
+         * dialog to ask permission enable
          */
         if (checkPermissions()) {
             //Search for drones first:
             mDroneDiscoverer.setup();
             mDroneDiscoverer.addListener(mDiscovererListener);
             mDroneDiscoverer.startDiscovering();
-
-            //General BLE Stuff:
-//                if (!mBluetoothAdapter.isEnabled()) {
-//                    Intent enableBt = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-//                    startActivityForResult(enableBt, REQUEST_ENABLE_BT);
-//                }
-//            scanLeDevice(true);
         }
     }
 
     private ScanCallback mScanCallback = new ScanCallback() {
         @Override
         public void onScanResult(int callbackType, final ScanResult result) {
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    if (!mDeviceAddressesMAC.contains(result.getDevice().getAddress())) {
-                        scannedDeviceAdapter.update(result.getDevice(), result.getRssi(), result.getScanRecord());
-                        scannedDeviceAdapter.notifyDataSetChanged();
+            //Is in list?
+            boolean isDrone = false;
+            for (int i = 0; i < mDronesList.size(); i++) {
+                if(result.getDevice().getName()!=null) {
+                    if(mDronesList.get(i).getName().toLowerCase().equals(result.getDevice().getName().toLowerCase())) {
+                        isDrone = true;
                     }
                 }
-            });
+            }
+            if(!isDrone) {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (!mDeviceAddressesMAC.contains(result.getDevice().getAddress())) {
+                            scannedDeviceAdapter.update(result.getDevice(), result.getRssi(), result.getScanRecord());
+                            scannedDeviceAdapter.notifyDataSetChanged();
+                        }
+                    }
+                });
+            }
             super.onScanResult(callbackType, result);
         }
     };

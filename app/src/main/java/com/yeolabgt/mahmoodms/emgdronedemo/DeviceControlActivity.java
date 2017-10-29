@@ -614,9 +614,7 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
     }
 
     private void disconnectAllBLE() {
-        if (!mMiniDrone.disconnect()) {
-            finish();
-        }
+        disconnectDrone();
         if (mBluetoothLe != null) {
             for (BluetoothGatt bluetoothGatt : mBluetoothGattArray) {
                 mBluetoothLe.disconnect(bluetoothGatt);
