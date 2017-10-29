@@ -13,8 +13,8 @@ class GraphAdapter {
     SimpleXYSeries series;
     LineAndPointFormatter lineAndPointFormatter;
     private int seriesHistoryDataPoints;
-    private int bufferSize;
-    double[] classificationBuffer;
+//    private int bufferSize;
+//    double[] classificationBuffer;
     int sampleRate;
     private double xAxisIncrement;
     boolean plotData;
@@ -28,13 +28,13 @@ class GraphAdapter {
     }
 
     // Constructor
-    GraphAdapter(int seriesHistoryDataPoints, String XYSeriesTitle, boolean useImplicitXVals, int lineAndPointFormatterColor, int classificationBufferSize) {
+    GraphAdapter(int seriesHistoryDataPoints, String XYSeriesTitle, boolean useImplicitXVals, int lineAndPointFormatterColor) {
         //default values
         this.seriesHistoryDataPoints = seriesHistoryDataPoints;
         this.lineAndPointFormatter = new LineAndPointFormatter(lineAndPointFormatterColor, null, null, null);
         setPointWidth(5); //Def value:
-        this.bufferSize = classificationBufferSize;
-        this.classificationBuffer = new double[classificationBufferSize];
+//        this.bufferSize = classificationBufferSize;
+//        this.classificationBuffer = new double[classificationBufferSize];
         this.series = new SimpleXYSeries(XYSeriesTitle);
         if(useImplicitXVals) this.series.useImplicitXVals();
         this.plotData = false; //Don't plot data until explicitly told to do so:
@@ -42,13 +42,6 @@ class GraphAdapter {
 
     void setPointWidth(float width) {
         this.lineAndPointFormatter.getLinePaint().setStrokeWidth(width);
-    }
-
-    private void addToBuffer(double a) {
-        if(this.classificationBuffer!=null && this.bufferSize>0) {
-            System.arraycopy(this.classificationBuffer, 1, this.classificationBuffer, 0, this.bufferSize-1); //shift backwards
-            this.classificationBuffer[this.bufferSize-1] = a; //add to front:
-        }
     }
 
     void setSeriesHistoryDataPoints(int seriesHistoryDataPoints) {
@@ -64,7 +57,6 @@ class GraphAdapter {
     }
 
     void addDataPoint(double data, int index) {
-        addToBuffer(data);
         if(this.plotData) plot((double)index*xAxisIncrement,data);
     }
 

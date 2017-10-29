@@ -1,7 +1,6 @@
 package com.yeolabgt.mahmoodms.emgdronedemo;
 
 import android.util.Log;
-import android.widget.Toast;
 
 import com.google.common.primitives.Doubles;
 
@@ -16,23 +15,24 @@ import java.util.List;
 class ClassDataAnalysis {
     private static final String TAG = ClassDataAnalysis.class.getSimpleName();
     private static double rawData[][];
-    private static final int COLUMNS = 2;
+    private static int mColumns = 2;
     boolean ERROR = false;
 
-    ClassDataAnalysis(List<String[]> strings, int length) {
+    ClassDataAnalysis(List<String[]> strings, int numberChannels, int length) {
+        setmColumns(numberChannels+1);
         int stringSize = strings.size();
-        rawData = new double[COLUMNS][length];
+        rawData = new double[mColumns][length];
         //Check rawData integrity first:
         if(strings.size() >= length) {
             for (int i = 0; i < length; i++) {
-                if(strings.get(i).length!=COLUMNS) {
+                if(strings.get(i).length!= mColumns) {
                     Log.e(TAG, "ERROR! - INCORRECT LENGTH("+ String.valueOf(strings.get(i).length)+")!; BREAK @ [ " + String.valueOf(i) + "/" + String.valueOf(stringSize) + "]");
                     return;
                 }
             }
             for (int i = 0; i < length; i++) {
-                for (int j = 0; j < COLUMNS; j++) { //add to array
-                    if (strings.get(i).length==COLUMNS)
+                for (int j = 0; j < mColumns; j++) { //add to array
+                    if (strings.get(i).length== mColumns)
                         rawData[j][i] = Double.parseDouble(strings.get(i)[j]);
                 }
             }
@@ -44,9 +44,18 @@ class ClassDataAnalysis {
         }
     }
 
+    private static void setmColumns(int mColumns) {
+        ClassDataAnalysis.mColumns = mColumns;
+    }
+
     static double[] concatAll() {
-        if(rawData[0]!=null) return Doubles.concat(rawData[0], rawData[1]);
-        else return null;
+        if(mColumns ==2) {
+            if(rawData[0]!=null) return Doubles.concat(rawData[0], rawData[1]);
+            else return null;
+        } else {
+            if(rawData[0]!=null) return Doubles.concat(rawData[0], rawData[1], rawData[2]);
+            else return null;
+        }
     }
 
 }
