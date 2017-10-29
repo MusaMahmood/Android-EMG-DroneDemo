@@ -230,12 +230,10 @@ public class MainActivity extends Activity {
             mDroneDiscoverer.startDiscovering();
 
             //General BLE Stuff:
-//            if (!mBluetoothAdapter.isEnabled()) {
 //                if (!mBluetoothAdapter.isEnabled()) {
 //                    Intent enableBt = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
 //                    startActivityForResult(enableBt, REQUEST_ENABLE_BT);
 //                }
-//            }
 //            scanLeDevice(true);
         }
     }
@@ -268,12 +266,16 @@ public class MainActivity extends Activity {
                 Log.e(TAG,service.getName());
                 if(service.getName().toLowerCase().contains("mambo")) {
                     selectedArDiscoveryDeviceService = service;
+                    mDroneDiscoverer.stopDiscovering();
+                    mDroneDiscoverer.cleanup();
+                    mDroneDiscoverer.removeListener(mDiscovererListener);
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
                             Toast.makeText(MainActivity.this, "Drone Selected! "+service.getName(), Toast.LENGTH_SHORT).show();
                         }
                     });
+                    scanLeDevice(true);
                     //Stop custom scan & start BLE scan:
                 }
             }

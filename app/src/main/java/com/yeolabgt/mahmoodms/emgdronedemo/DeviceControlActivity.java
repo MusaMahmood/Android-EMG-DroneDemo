@@ -129,7 +129,8 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
     private ProgressDialog mConnectionProgressDialog;
     private ProgressDialog mDownloadProgressDialog;
     private Button mTakeOffLandBt;
-    private Button mDownloadBt;
+    private Button mConnectDroneButton;
+    private boolean mDroneConnectionState = false;
     private TextView mBatteryLevelDrone;
     private int mNbMaxDownload;
     private int mCurrentDownloadIndex;
@@ -145,11 +146,11 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
     int fPSDEndIndex = 100;
     //Filestuffs:
     private static File trainingDataFile;
-    private static CSVWriter mKNNcsvWriter;
     private static double[] CUSTOM_KNN_PARAMS;
     private static boolean mUseCustomParams = false;
     private int[] mYfitArray = new int[10];
     private TextView mEMGClassText;
+    ARDiscoveryDeviceService mARService;
 
     @SuppressLint("ClickableViewAccessibility")
     @Override
@@ -188,6 +189,7 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
         mBatteryLevelDrone = findViewById(R.id.droneBatteryText);
         mTrainingInstructions = findViewById(R.id.trainingInstructions);
         mEMGClassText = findViewById(R.id.emgClassText);
+        mConnectDroneButton = findViewById(R.id.droneConnectButton);
         updateTrainingView(mRunTrainingBool);
         mDataRate = findViewById(R.id.dataRate);
         mDataRate.setText("...");
@@ -217,15 +219,13 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
             }
         });
         mTakeOffLandBt = findViewById(R.id.buttonS);
-        mDownloadBt = findViewById(R.id.buttonF);
         makeFilterSwitchVisible(false);
         mLastTime = System.currentTimeMillis();
-        ToggleButton toggleButton1 = findViewById(R.id.toggleButtonWheelchairControl);
+        ToggleButton toggleButton1 = findViewById(R.id.toggleButtonDroneControl);
         toggleButton1.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
                 mDroneControl = b;
-//                executeWheelchairCommand(0);
                 makeFilterSwitchVisible(b);
             }
         });
@@ -254,23 +254,6 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
             }
         });
         mMediaBeep = MediaPlayer.create(this, R.raw.beep_01a);
-        mDownloadBt.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                mMiniDrone.getLastFlightMedias();
-                mDownloadProgressDialog = new ProgressDialog(DeviceControlActivity.this, R.style.AppCompatAlertDialogStyle);
-                mDownloadProgressDialog.setIndeterminate(true);
-                mDownloadProgressDialog.setMessage("Fetching medias");
-                mDownloadProgressDialog.setCancelable(false);
-                mDownloadProgressDialog.setButton(DialogInterface.BUTTON_NEGATIVE, "Cancel", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        mMiniDrone.cancelGetLastFlightMedias();
-                    }
-                });
-                mDownloadProgressDialog.show();
-            }
-        });
         findViewById(R.id.buttonFwd).setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
@@ -315,25 +298,60 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
         });
         mTakeOffLandBt.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                if (mMiniDrone != null) {
-                    switch (mMiniDrone.getFlyingState()) {
-                        case ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_LANDED:
-                            mMiniDrone.takeOff();
-                            break;
-                        case ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_FLYING:
-                        case ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_HOVERING:
-                            mMiniDrone.land();
-                            break;
-                        default:
-                    }
+                switch (mMiniDrone.getFlyingState()) {
+                    case ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_LANDED:
+                        mMiniDrone.takeOff();
+                        break;
+                    case ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_FLYING:
+                    case ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_HOVERING:
+                        mMiniDrone.land();
+                        break;
+                    default:
                 }
             }
         });
+        mConnectDroneButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if(!mDroneConnectionState) {
+                    if(connectDrone()) {
+                        mDroneConnectionState = true;
+                        String s = "Disconnect";
+                        mConnectDroneButton.setText(s);
+                    }
+                } else {
+                    if(disconnectDrone()) {
+                        mDroneConnectionState = false;
+                        String s = "Connect";
+                        mConnectDroneButton.setText(s);
+                    }
+                }
+                Log.d(TAG, "onClick: mDroneConnectionState: "+String.valueOf(mDroneConnectionState));
+            }
+        });
+        mARService = intent.getParcelableExtra(MainActivity.EXTRA_DRONEDEVICE_SERVICE);
+    }
 
-        ARDiscoveryDeviceService service = intent.getParcelableExtra(MainActivity.EXTRA_DRONEDEVICE_SERVICE);
-        if (service != null) {
+    private boolean disconnectDrone() {
+        if (mMiniDrone != null) {
+            mConnectionProgressDialog = new ProgressDialog(this, R.style.AppCompatAlertDialogStyle);
+            mConnectionProgressDialog.setIndeterminate(true);
+            mConnectionProgressDialog.setMessage("Disconnecting ...");
+            mConnectionProgressDialog.setCancelable(false);
+            mConnectionProgressDialog.show();
+            if (!mMiniDrone.disconnect()) {
+                finish();
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean connectDrone() {
+        if (mARService != null) {
+            mBatteryLevelDrone.setVisibility(View.VISIBLE);
             mDronePresent = true;
-            mMiniDrone = new MiniDrone(this, service);
+            mMiniDrone = new MiniDrone(this, mARService);
             mMiniDrone.addListener(mMiniDroneListener);
             if ((mMiniDrone != null) && !(ARCONTROLLER_DEVICE_STATE_ENUM.ARCONTROLLER_DEVICE_STATE_RUNNING.equals(mMiniDrone.getConnectionState()))) {
                 mConnectionProgressDialog = new ProgressDialog(this, R.style.AppCompatAlertDialogStyle);
@@ -341,14 +359,19 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
                 mConnectionProgressDialog.setMessage("Connecting ...");
                 mConnectionProgressDialog.setCancelable(false);
                 mConnectionProgressDialog.show();
-
                 // if the connection to the MiniDrone fails, finish the activity
                 if (!mMiniDrone.connect()) {
+                    Toast.makeText(getApplicationContext(), "Failed to Connect Drone", Toast.LENGTH_LONG).show();
                     finish();
+                    return false;
                 }
+                return true;
+            } else {
+                return false;
             }
         } else {
             Log.e(TAG, "Drone Service is Null");
+            return false;
         }
     }
 
@@ -356,7 +379,7 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
         if (mDronePresent && mDroneControl) {
             switch (command) {
                 case 0:
-                    //Do nothing:
+                    //Do nothing/Hover
                     if (mMiniDrone != null) {
                         //Reset conditions:
                         mMiniDrone.setYaw((byte) 0);
@@ -385,6 +408,7 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
                                 mMiniDrone.takeOff();
                                 break;
                             case ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_FLYING:
+                                //Do nothing.
                             case ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_HOVERING:
                                 mMiniDrone.land();
                                 break;
@@ -409,36 +433,7 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
         if (fileSaveInitialized) {
             csvWriter.flush();
             csvWriter.close();
-            mKNNcsvWriter.flush();
-            mKNNcsvWriter.close();
             fileSaveInitialized = false;
-        }
-    }
-
-    public void openParamDataFile() {
-        File mFileClassificationParams;
-        File root = Environment.getExternalStorageDirectory();
-        if (root.canWrite()) {
-            File dir = new File(root.getAbsolutePath() + "/EMG_Training_Params");
-            boolean resultMkdir = dir.mkdirs();
-            if (!resultMkdir) {
-                Log.e(TAG, "MKDIRS FAILED");
-            }
-            mFileClassificationParams = new File(dir, "params.csv"); //+getTimestamp
-            if (mFileClassificationParams.exists() && !mFileClassificationParams.isDirectory()) {
-                try {                    //DO NOT APPEND DATA.
-                    FileWriter fileWriter = new FileWriter(mFileClassificationParams, false);
-                    mKNNcsvWriter = new CSVWriter(fileWriter);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            } else {
-                try {
-                    mKNNcsvWriter = new CSVWriter(new FileWriter(mFileClassificationParams));
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
         }
     }
 
@@ -449,7 +444,6 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
      */
     public void saveDataFile() throws IOException {
         File root = Environment.getExternalStorageDirectory();
-//        String fileTimeStamp = "EEG_SSVEPData_" + getTimeStamp() + "_" + String.valueOf((int) mEMGClass);
         String fileTimeStamp = "EMG_1CH_" + getTimeStamp() + "_" + String.valueOf(mSampleRate) + "Hz";
         Log.d(TAG, "fileTimeStamp: " + fileTimeStamp);
         if (root.canWrite()) {
@@ -569,7 +563,6 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
             if (!fileSaveInitialized) {
                 try {
                     saveDataFile();
-                    openParamDataFile();
                 } catch (IOException ex) {
                     Log.e("IOEXCEPTION:", ex.toString());
                 }
@@ -621,6 +614,9 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
     }
 
     private void disconnectAllBLE() {
+        if (!mMiniDrone.disconnect()) {
+            finish();
+        }
         if (mBluetoothLe != null) {
             for (BluetoothGatt bluetoothGatt : mBluetoothGattArray) {
                 mBluetoothLe.disconnect(bluetoothGatt);
@@ -776,7 +772,7 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
         if (status == BluetoothGatt.GATT_SUCCESS) {
             if (AppConstant.CHAR_BATTERY_LEVEL.equals(characteristic.getUuid())) {
                 if (characteristic.getValue().length > 1) {
-                    int batteryLevel = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT16, 0);
+                    int batteryLevel = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0);
                     updateBatteryStatus(batteryLevel);
                     Log.i(TAG, "Battery Level :: " + batteryLevel);
                 }
@@ -789,7 +785,7 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
     @Override
     public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
         if (AppConstant.CHAR_BATTERY_LEVEL.equals(characteristic.getUuid())) {
-            int batteryLevel = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT16, 0);
+            int batteryLevel = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0);
             updateBatteryStatus(batteryLevel);
         }
 
@@ -975,6 +971,7 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
             @Override
             public void run() {
                 mTrainingInstructions.setVisibility(visibility);
+                mEMGClassText.setVisibility(visibility);
             }
         });
     }
@@ -1017,11 +1014,10 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
         Log.i(TAG, " YfitArray: " + Arrays.toString(mYfitArray));
         final boolean checkLastThreeMatches = lastThreeMatches(mYfitArray);
         if (checkLastThreeMatches) {
-            //Get value:
-            Log.e(TAG, "Found fit: " + String.valueOf(mYfitArray[mYfitArray.length-1]));
-            // TODO: Control Drone:
+            // TODO: Control Drone: Tweaks?
             if((int)Y==3) {
                 if(allMembersMatch(mYfitArray)) {
+                    Log.e(TAG, "Found fit: " + String.valueOf(mYfitArray[mYfitArray.length-1]));
                     output = 3;
                 } else {
                     output = 0;
@@ -1079,16 +1075,7 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
                     // TODO: 10/27/2017 UPDATE TRAINING FOR 2 CHANNELS.
                     CUSTOM_KNN_PARAMS = null;
                     Log.e(TAG, "CUSTOM_KNN_PARAMS" + "IS NULL");
-//                    mUseCustomParams = true;
                 }
-                //Write to Disk? // dont...
-//                if (mKNNcsvWriter != null) {
-//                    String[] strings1 = new String[1];
-//                    for (double p : CUSTOM_KNN_PARAMS) {
-//                        strings1[0] = p + "";
-//                        mKNNcsvWriter.writeNext(strings1, false);
-//                    }
-//                }
                 Log.e(TAG, "Custom Training Data Loaded");
             } else {
                 Log.e(TAG, "Unable to Load Training Data! :: Please Run Training Session Again");
@@ -1097,7 +1084,6 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
             e.printStackTrace();
         }
     }
-
 
     private static class TrainTask extends AsyncTask<Void, Void, Void> {
         @Override
@@ -1305,24 +1291,24 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
 
     private void updateBatteryStatus(final int integerValue) {
         final String status;
-        double convertedBatteryVoltage = ((double) integerValue / (4096.0)) * 7.20;
+//        double convertedBatteryVoltage = ((double) integerValue / (4096.0)) * 7.20;
         //Because TPS63001 dies below 1.8V, we need to set up a linear fit between 1.8-4.2V
         //Anything over 4.2V = 100%
-        final double finalPercent;
-        if (((125.0 / 3.0) * convertedBatteryVoltage - 75.0) > 100.0) {
-            finalPercent = 100.0;
-        } else if (((125.0 / 3.0) * convertedBatteryVoltage - 75.0) < 0) {
-            finalPercent = 0;
-        } else {
-            finalPercent = (125.0 / 3.0) * convertedBatteryVoltage - 75.0;
-        }
+//        final double finalPercent;
+//        if (((125.0 / 3.0) * convertedBatteryVoltage - 75.0) > 100.0) {
+//            finalPercent = 100.0;
+//        } else if (((125.0 / 3.0) * convertedBatteryVoltage - 75.0) < 0) {
+//            finalPercent = 0;
+//        } else {
+//            finalPercent = (125.0 / 3.0) * convertedBatteryVoltage - 75.0;
+//        }
         Log.e(TAG, "Battery Integer Value: " + String.valueOf(integerValue));
-        Log.e(TAG, "ConvertedBatteryVoltage: " + String.format(Locale.US, "%.5f", convertedBatteryVoltage) + "V : " + String.format(Locale.US, "%.3f", finalPercent) + "%");
-        status = String.format(Locale.US, "%.1f", finalPercent) + "%";
+        Log.e(TAG, "ConvertedBatteryVoltage: " + String.format(Locale.US, "%.1d", integerValue)+"%");
+        status = "EMG Battery: "+String.format(Locale.US, "%.1d", integerValue) + "%";
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                if (finalPercent <= batteryWarning) {
+                if (integerValue <= batteryWarning) {
                     mBatteryLevel.setTextColor(Color.RED);
                     mBatteryLevel.setTypeface(null, Typeface.BOLD);
                     Toast.makeText(getApplicationContext(), "Charge Battery, Battery Low " + status, Toast.LENGTH_SHORT).show();
@@ -1375,7 +1361,7 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
 
         @Override
         public void onBatteryChargeChanged(int batteryPercentage) {
-            String batteryFormatted = String.format(Locale.US, "%d%%", batteryPercentage);
+            String batteryFormatted = String.format(Locale.US, "Drone Battery: [%d%%]", batteryPercentage);
             mBatteryLevelDrone.setText(batteryFormatted);
         }
 
@@ -1386,18 +1372,18 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
                     String to = "Take off";
                     mTakeOffLandBt.setText(to);
                     mTakeOffLandBt.setEnabled(true);
-                    mDownloadBt.setEnabled(true);
+//                    mDownloadBt.setEnabled(true);
                     break;
                 case ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_FLYING:
                 case ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_HOVERING:
                     String ld = "Land";
                     mTakeOffLandBt.setText(ld);
                     mTakeOffLandBt.setEnabled(true);
-                    mDownloadBt.setEnabled(false);
+//                    mDownloadBt.setEnabled(false);
                     break;
                 default:
                     mTakeOffLandBt.setEnabled(false);
-                    mDownloadBt.setEnabled(false);
+//                    mDownloadBt.setEnabled(false);
             }
         }
 

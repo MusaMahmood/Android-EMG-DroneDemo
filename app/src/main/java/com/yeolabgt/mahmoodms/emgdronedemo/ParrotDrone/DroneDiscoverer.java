@@ -15,7 +15,6 @@ import com.parrot.arsdk.ardiscovery.receivers.ARDiscoveryServicesDevicesListUpda
 import com.parrot.arsdk.ardiscovery.receivers.ARDiscoveryServicesDevicesListUpdatedReceiverDelegate;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 
 public class DroneDiscoverer
