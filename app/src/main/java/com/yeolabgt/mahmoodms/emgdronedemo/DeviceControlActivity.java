@@ -72,8 +72,6 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
     private boolean mGraphInitializedBoolean = false;
     private GraphAdapter mGraphAdapterCh1;
     private GraphAdapter mGraphAdapterCh2;
-    //    private GraphAdapter mGraphAdapterCh1PSDA;
-//    private GraphAdapter mGraphAdapterCh2PSDA;
     public XYPlotAdapter mCh1PlotAdapter;
     public XYPlotAdapter mCh2PlotAdapter;
     private int mSampleRate = 250;
@@ -142,13 +140,11 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
     private TextView mYfitTextView;
     private TextView mTrainingInstructions;
     private int mNumberOfClassifierCalls = 0;
-    int fPSDStartIndex = 0;
-    int fPSDEndIndex = 100;
     //Filestuffs:
     private static File trainingDataFile;
     private static double[] CUSTOM_KNN_PARAMS;
     private static boolean mUseCustomParams = false;
-    private int[] mYfitArray = new int[10];
+    private int[] mYfitArray = new int[7];
     private TextView mEMGClassText;
     ARDiscoveryDeviceService mARService;
 
@@ -548,8 +544,6 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
                 mSampleRate = 250;
                 mPacketBuffer = 1;
             }
-            fPSDStartIndex = 16;
-            fPSDEndIndex = 80;
             Log.e(TAG, "mSampleRate: " + mSampleRate + "Hz");
 
             if (!mGraphInitializedBoolean) setupGraph();
@@ -581,7 +575,8 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
         mGraphAdapterCh2.setPointWidth((float) 2);
         mCh1PlotAdapter = new XYPlotAdapter(findViewById(R.id.eegTimeDomainXYPlot), false, 1000);
         mCh1PlotAdapter.xyPlot.addSeries(mGraphAdapterCh1.series, mGraphAdapterCh1.lineAndPointFormatter);
-        mCh2PlotAdapter = new XYPlotAdapter(findViewById(R.id.frequencyAnalysisXYPlot), "Frequency (Hz)", "Power Density (W/Hz)", ((double) mSampleRate / 125.0));
+        mCh2PlotAdapter = new XYPlotAdapter(findViewById(R.id.frequencyAnalysisXYPlot), false, 1000);
+        mCh2PlotAdapter.xyPlot.setVisibility(View.GONE);
         mCh2PlotAdapter.xyPlot.addSeries(mGraphAdapterCh2.series, mGraphAdapterCh2.lineAndPointFormatter);
 
         redrawer = new Redrawer(
@@ -723,6 +718,7 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
                         if (mCh2 == null) {
                             mCh2 = new DataChannel(false, mMSBFirst, 2 * mSampleRate);
                         }
+                        mCh2PlotAdapter.xyPlot.setVisibility(View.VISIBLE);
                         mNumberChannels = 2;
                     }
                     if (service.getCharacteristic(AppConstant.CHAR_EEG_CH3_SIGNAL) != null) {
@@ -831,7 +827,6 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
                 Thread thread = new Thread(mRunnableClassifyTaskThread);
                 mNumberOfClassifierCalls++;
                 thread.start();
-
             }
         } else {
             if (mCh1PacketCount % 10 == 0 && mCh1PacketCount > 120) {
@@ -1012,7 +1007,6 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
         Log.i(TAG, " YfitArray: " + Arrays.toString(mYfitArray));
         final boolean checkLastThreeMatches = lastThreeMatches(mYfitArray);
         if (checkLastThreeMatches) {
-            // TODO: Control Drone: Tweaks?
             if((int)Y==3) {
                 if(allMembersMatch(mYfitArray)) {
                     Log.e(TAG, "Found fit: " + String.valueOf(mYfitArray[mYfitArray.length-1]));

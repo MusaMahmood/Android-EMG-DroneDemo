@@ -117,7 +117,6 @@ public class MainActivity extends Activity {
             public void onItemClick(AdapterView<?> adapterView, View view, int position, long id) {
                 ScannedDevice item = scannedDeviceAdapter.getItem(position);
                 if (item != null) {
-                    boolean isDrone = false;
                     Log.e(TAG, "mDronesList.size: " + mDronesList.size());
                     if (!mDeviceAddressesMAC.contains(item.getDeviceMac())) {
                         mDeviceNames.add(item.getDisplayName());
@@ -264,7 +263,7 @@ public class MainActivity extends Activity {
         public void onDronesListUpdated(List<ARDiscoveryDeviceService> dronesList) {
             Log.e(TAG,"Drone Detected!");
             mDronesList.clear();
-            mDronesList.addAll(dronesList); //TODO: Change:
+            mDronesList.addAll(dronesList);
             Log.e(TAG,"Current DroneList Update: "+String.valueOf(mDronesList.size()));
             for (final ARDiscoveryDeviceService service:dronesList) {
                 Log.e(TAG,service.getName());
@@ -283,7 +282,6 @@ public class MainActivity extends Activity {
                     //Stop custom scan & start BLE scan:
                 }
             }
-
             //Add to adapter?
         }
     };
