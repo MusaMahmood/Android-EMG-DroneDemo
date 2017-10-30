@@ -600,9 +600,9 @@ public class DeviceControlActivity extends Activity implements BluetoothLe.Bluet
 
     @Override
     protected void onDestroy() {
+        disconnectAllBLE();
         if (mMiniDrone != null) mMiniDrone.dispose();
         redrawer.finish();
-        disconnectAllBLE();
         try {
             terminateDataFileWriter();
         } catch (IOException e) {
