@@ -26,7 +26,7 @@ android {
     compileSdkVersion 26
     buildToolsVersion '26.0.2'
     defaultConfig {
-        applicationId "com.yeolabgt.mahmoodms.ssvepinterfacetf"
+        applicationId "com.yeolabgt.mahmoodms.emgdronedemo"
         minSdkVersion 22
         targetSdkVersion 26
         versionCode 1

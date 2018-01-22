@@ -1,9 +1,8 @@
-package com.yeolabgt.mahmoodms.ssvepinterfacetf
+package com.yeolabgt.mahmoodms.emgdronedemo
 
 import org.junit.Test
 
 import org.junit.Assert.*
-import java.util.*
 
 /**
  * Example local unit test, which will execute on the development machine (host).

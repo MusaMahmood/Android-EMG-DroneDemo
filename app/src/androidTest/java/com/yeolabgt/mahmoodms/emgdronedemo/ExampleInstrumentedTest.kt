@@ -1,4 +1,4 @@
-package com.yeolabgt.mahmoodms.ssvepinterfacetf
+package com.yeolabgt.mahmoodms.emgdronedemo
 
 import android.support.test.InstrumentationRegistry
 import android.support.test.runner.AndroidJUnit4
@@ -7,7 +7,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 import org.junit.Assert.*
-import java.util.*
 
 /**
  * Instrumented test, which will execute on an Android device.
@@ -20,6 +19,6 @@ class ExampleInstrumentedTest {
     fun useAppContext() {
         // Context of the app under test.
         val appContext = InstrumentationRegistry.getTargetContext()
-        assertEquals("com.yeolabgt.mahmoodms.ssvepinterfacetf", appContext.packageName)
+        assertEquals("com.yeolabgt.mahmoodms.emgdronedemo", appContext.packageName)
     }
 }

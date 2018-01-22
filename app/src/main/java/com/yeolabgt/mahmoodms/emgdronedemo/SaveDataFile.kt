@@ -1,4 +1,4 @@
-package com.yeolabgt.mahmoodms.ssvepinterfacetf
+package com.yeolabgt.mahmoodms.emgdronedemo
 
 import android.os.Environment
 import android.util.Log

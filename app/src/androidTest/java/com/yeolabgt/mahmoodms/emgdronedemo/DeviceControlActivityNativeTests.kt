@@ -1,4 +1,4 @@
-package com.yeolabgt.mahmoodms.ssvepinterfacetf
+package com.yeolabgt.mahmoodms.emgdronedemo
 
 import android.support.test.runner.AndroidJUnit4
 import android.util.Log

@@ -1,4 +1,4 @@
-package com.yeolabgt.mahmoodms.ssvepinterfacetf
+package com.yeolabgt.mahmoodms.emgdronedemo
 
 import android.app.Activity
 import android.bluetooth.BluetoothDevice
@@ -233,10 +233,10 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             mGraphAdapterCh1!!.setSeriesHistoryDataPoints(250 * 5)
             mGraphAdapterCh2!!.setSeriesHistoryDataPoints(250 * 5)
             mGraphAdapterCh3?.setSeriesHistoryDataPoints(250 * 5)
-            val fileNameTimeStamped = "EOG_VergenceData_" + timeStamp + "_" + mSampleRate.toString() + "Hz"
+            val fileNameTimeStamped = "EMG_VergenceData_" + timeStamp + "_" + mSampleRate.toString() + "Hz"
             Log.e(TAG, "fileTimeStamp: " + fileNameTimeStamped)
             try {
-                mPrimarySaveDataFile = SaveDataFile("/EOGData", fileNameTimeStamped,
+                mPrimarySaveDataFile = SaveDataFile("/EMGData", fileNameTimeStamped,
                         24, 1.toDouble() / mSampleRate)
             } catch (e: IOException) {
                 Log.e(TAG, "initializeBluetoothArray: IOException", e)
@@ -251,9 +251,9 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
 
     private fun setupGraph() {
         // Initialize our XYPlot reference:
-        mGraphAdapterCh1 = GraphAdapter(mSampleRate * 4, "EOG Data Ch 1", false, Color.BLUE)
-        mGraphAdapterCh2 = GraphAdapter(mSampleRate * 4, "EOG Data Ch 2", false, Color.RED)
-        mGraphAdapterCh3 = GraphAdapter(mSampleRate * 4, "EOG Data Ch 3", false, Color.GREEN)
+        mGraphAdapterCh1 = GraphAdapter(mSampleRate * 4, "EMG Data Ch 1", false, Color.BLUE)
+        mGraphAdapterCh2 = GraphAdapter(mSampleRate * 4, "EMG Data Ch 2", false, Color.RED)
+        mGraphAdapterCh3 = GraphAdapter(mSampleRate * 4, "EMG Data Ch 3", false, Color.GREEN)
 
         //PLOT By default
         mGraphAdapterCh1!!.plotData = true

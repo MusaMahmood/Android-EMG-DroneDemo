@@ -1,4 +1,4 @@
-package com.yeolabgt.mahmoodms.ssvepinterfacetf
+package com.yeolabgt.mahmoodms.emgdronedemo
 
 import android.bluetooth.BluetoothDevice
 
