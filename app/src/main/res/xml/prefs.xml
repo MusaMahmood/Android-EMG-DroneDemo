@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android" >
+
+    <PreferenceCategory android:title="ADS1299 Preferences">
+
+        <ListPreference
+            android:defaultValue="3"
+            android:entries="@array/chEnable"
+            android:entryValues="@array/chEnableValues"
+            android:key="channel_list_preference"
+            android:title="Select Number Channels" />
+
+        <ListPreference
+            android:defaultValue="0"
+            android:entries="@array/sampleRate"
+            android:entryValues="@array/sampleRateValues"
+            android:key="sample_rate_list_preference"
+            android:title="Select Sample Rate" />
+
+        <ListPreference
+            android:defaultValue="0"
+            android:entries="@array/ch12_gain"
+            android:entryValues="@array/ch12_gainValues"
+            android:key="gain_list_preference"
+            android:title="Select Gain (Ch 1 and 2)" />
+
+        <SwitchPreference
+            android:defaultValue="false"
+            android:key="switch_srb1"
+            android:title="SRB 1" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="UI Elements">
+        <SwitchPreference
+            android:defaultValue="false"
+            android:key="filterData"
+            android:title="Filter Data?" />
+        <SwitchPreference
+            android:defaultValue="false"
+            android:key="showUIElements"
+            android:title="Show Control Buttons" />
+    </PreferenceCategory>
+    <PreferenceCategory android:title="Data Saving">
+
+        <SwitchPreference
+            android:defaultValue="false"
+            android:key="timestamps"
+            android:title="Save timestamps" />
+        <SwitchPreference
+            android:defaultValue="true"
+            android:key="save_class"
+            android:title="Save Class (training)" />
+        <SwitchPreference
+            android:defaultValue="true"
+            android:key="bit_precision"
+            android:title="Precision (32/64-bit)" />
+    </PreferenceCategory>
+
+</PreferenceScreen>

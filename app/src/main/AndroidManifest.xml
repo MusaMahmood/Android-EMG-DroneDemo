@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.yeolabgt.mahmoodms.emgdronedemo">
+    package="com.yeolabgt.mahmoodms.ssvepinterfacetf">
 
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.INTERNET"/>
@@ -28,7 +28,7 @@
         </provider>
 
         <activity
-            android:name="com.yeolabgt.mahmoodms.emgdronedemo.MainActivity"
+            android:name="com.yeolabgt.mahmoodms.ssvepinterfacetf.MainActivity"
             android:label="@string/main_activity_title">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
@@ -36,13 +36,19 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-        <activity android:name="com.yeolabgt.mahmoodms.emgdronedemo.DeviceControlActivity"
+        <activity android:name="com.yeolabgt.mahmoodms.ssvepinterfacetf.DeviceControlActivity"
             android:hardwareAccelerated="false"
             android:label="ECG Sensor Data"
-            android:parentActivityName="com.yeolabgt.mahmoodms.emgdronedemo.MainActivity">
+            android:parentActivityName="com.yeolabgt.mahmoodms.ssvepinterfacetf.MainActivity">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
-                android:value="com.yeolabgt.mahmoodms.emgdronedemo.MainActivity" />
+                android:value="com.yeolabgt.mahmoodms.ssvepinterfacetf.MainActivity" />
+        </activity>
+        <activity android:name="com.yeolabgt.mahmoodms.ssvepinterfacetf.SettingsActivity"
+            android:label="Settings">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value="com.yeolabgt.mahmoodms.ssvepinterfacetf.DeviceControlActivity" />
         </activity>
     </application>
 </manifest>

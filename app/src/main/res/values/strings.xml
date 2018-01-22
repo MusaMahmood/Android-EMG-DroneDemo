@@ -1,10 +1,13 @@
 <resources>
-    <string name="app_name">EMG Drone Interface</string>
-    <string name="main_activity_title">EMG Drone Interface</string>
+    <string name="app_name">Android EOG Vergence Interface</string>
+    <string name="main_activity_title">Android EOG Vergence Interface</string>
+    <string name="settings_activity_title">Support Preferences</string>
     <string name="ble_not_supported">BLE is not supported</string>
     <string name="error_bluetooth_not_supported">Bluetooth not supported.</string>
     <string name="menu_connect">Connect</string>
+    <string name="menu_connecting">Connecting</string>
     <string name="menu_disconnect">Disconnect</string>
+    <string name="menu_disconnecting">Disconnecting</string>
     <string name="menu_scan">Scan</string>
     <string name="menu_stop">Stop</string>
     <string name="connected">Connected</string>
@@ -13,4 +16,6 @@
     <string name="menu_address">-Device Address-</string>
     <string name="menu_connection_status">-Status-</string>
     <string name="menu_rssi">-RSSI-</string>
+    <string name="action_settings">Settings</string>
+    <string name="action_export">Export</string>
 </resources>

@@ -72,10 +72,4 @@
         <item name="domainLineColor">@color/ap_white</item>
         <item name="rangeLineColor">@color/ap_white</item>
     </style>
-
-    <style name="AppCompatAlertDialogStyle" parent="Theme.AppCompat.Light.Dialog.Alert">
-        <item name="colorAccent">@color/accent</item>
-        <item name="android:textColorPrimary">@color/primary_text</item>
-        <item name="android:background">@color/primary_light</item>
-    </style>
 </resources>

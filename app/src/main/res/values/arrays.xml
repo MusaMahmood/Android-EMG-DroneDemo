@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="sampleRate">
+        <item>"250"</item>
+        <item>"500"</item>
+        <item>"1k"</item>
+        <item>"2k"</item>
+        <item>"4k"</item>
+    </string-array>
+
+    <string-array name="sampleRateValues">
+        <item>0</item>
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+        <item>4</item>
+    </string-array>
+
+    <string-array name="chEnable">
+        <item>"1"</item>
+        <item>"2"</item>
+        <item>"3"</item>
+        <item>"4"</item>
+    </string-array>
+
+    <string-array name="chEnableValues">
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+        <item>4</item>
+    </string-array>
+
+    <string-array name="ch12_gain">
+        <item>"1"</item>
+        <item>"2"</item>
+        <item>"4"</item>
+        <item>"6"</item>
+        <item>"8"</item>
+        <item>"12"</item>
+        <item>"24"</item>
+    </string-array>
+
+    <string-array name="ch12_gainValues">
+        <item>0</item>
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+        <item>4</item>
+        <item>5</item>
+        <item>6</item>
+    </string-array>
+
+    <string-array name="tf_options">
+        <item>"None"</item>
+        <item>"256-point PSD"</item>
+        <item>"384-point PSD"</item>
+        <item>"512-point PSD"</item>
+    </string-array>
+</resources>

@@ -57,3 +57,4 @@ app/.externalNativeBuild/
 .gradle/buildOutputCleanup/
 build/android-profile/
 build/
+app/gradleBuild/
