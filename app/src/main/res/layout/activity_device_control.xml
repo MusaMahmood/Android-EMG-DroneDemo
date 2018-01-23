@@ -61,21 +61,13 @@
             android:layout_weight="1"
             ap:renderMode="use_background_thread" />
 
-        <com.androidplot.xy.XYPlot
+        <!--<com.androidplot.xy.XYPlot
             android:id="@+id/frequencyAnalysisXYPlot"
             style="@style/APFullScreenGraph.Light"
             android:layout_width="0dp"
             android:layout_height="fill_parent"
             android:layout_weight="1"
-            ap:renderMode="use_background_thread" />
-
-        <com.androidplot.xy.XYPlot
-            android:id="@+id/eogCh3XYPlot"
-            style="@style/APFullScreenGraph.Light"
-            android:layout_width="0dp"
-            android:layout_height="fill_parent"
-            android:layout_weight="1"
-            ap:renderMode="use_background_thread" />
+            ap:renderMode="use_background_thread" />-->
 
     </LinearLayout>
 

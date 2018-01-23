@@ -43,14 +43,8 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
     // Graphing Variables:
     private var mGraphInitializedBoolean = false
     private var mGraphAdapterCh1: GraphAdapter? = null
-    private var mGraphAdapterCh2: GraphAdapter? = null
-    private var mGraphAdapterCh3: GraphAdapter? = null
     private var mTimeDomainPlotAdapterCh1: XYPlotAdapter? = null
-    private var mTimeDomainPlotAdapterCh2: XYPlotAdapter? = null
-    private var mTimeDomainPlotAdapterCh3: XYPlotAdapter? = null
     private var mCh1: DataChannel? = null
-    private var mCh2: DataChannel? = null
-    private var mCh3: DataChannel? = null
     //Device Information
     private var mBleInitializedBoolean = false
     private lateinit var mBluetoothGattArray: Array<BluetoothGatt?>
@@ -136,13 +130,9 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
         mTogglePlots = findViewById(R.id.toggleButtonCh1)
         mTogglePlots!!.setOnCheckedChangeListener { _, b ->
             if (!b) {
-                mGraphAdapterCh3?.clearPlot()
-                mGraphAdapterCh2?.clearPlot()
                 mGraphAdapterCh1?.clearPlot()
             }
             mGraphAdapterCh1!!.plotData = b
-            mGraphAdapterCh2!!.plotData = b
-            mGraphAdapterCh3!!.plotData = b
         }
         mExportButton.setOnClickListener { exportData() }
     }
@@ -227,12 +217,8 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             if (!mGraphInitializedBoolean) setupGraph()
 
             mGraphAdapterCh1!!.setxAxisIncrementFromSampleRate(mSampleRate)
-            mGraphAdapterCh2!!.setxAxisIncrementFromSampleRate(mSampleRate)
-            mGraphAdapterCh3?.setxAxisIncrementFromSampleRate(mSampleRate)
 
             mGraphAdapterCh1!!.setSeriesHistoryDataPoints(250 * 5)
-            mGraphAdapterCh2!!.setSeriesHistoryDataPoints(250 * 5)
-            mGraphAdapterCh3?.setSeriesHistoryDataPoints(250 * 5)
             val fileNameTimeStamped = "EMG_VergenceData_" + timeStamp + "_" + mSampleRate.toString() + "Hz"
             Log.e(TAG, "fileTimeStamp: " + fileNameTimeStamped)
             try {
@@ -252,31 +238,21 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
     private fun setupGraph() {
         // Initialize our XYPlot reference:
         mGraphAdapterCh1 = GraphAdapter(mSampleRate * 4, "EMG Data Ch 1", false, Color.BLUE)
-        mGraphAdapterCh2 = GraphAdapter(mSampleRate * 4, "EMG Data Ch 2", false, Color.RED)
-        mGraphAdapterCh3 = GraphAdapter(mSampleRate * 4, "EMG Data Ch 3", false, Color.GREEN)
 
         //PLOT By default
         mGraphAdapterCh1!!.plotData = true
-        mGraphAdapterCh2!!.plotData = true
-        mGraphAdapterCh3!!.plotData = true
         mGraphAdapterCh1!!.setPointWidth(2.toFloat())
-        mGraphAdapterCh2!!.setPointWidth(2.toFloat())
-        mGraphAdapterCh3!!.setPointWidth(2.toFloat())
 
         mTimeDomainPlotAdapterCh1 = XYPlotAdapter(findViewById(R.id.eegTimeDomainXYPlot), false, 1000)
         if (mTimeDomainPlotAdapterCh1!!.xyPlot != null) {
             mTimeDomainPlotAdapterCh1!!.xyPlot!!.addSeries(mGraphAdapterCh1!!.series, mGraphAdapterCh1!!.lineAndPointFormatter)
         }
-        mTimeDomainPlotAdapterCh2 = XYPlotAdapter(findViewById(R.id.frequencyAnalysisXYPlot), false, 1000)
-        if (mTimeDomainPlotAdapterCh2!!.xyPlot != null) {
-            mTimeDomainPlotAdapterCh2!!.xyPlot!!.addSeries(mGraphAdapterCh2!!.series, mGraphAdapterCh2!!.lineAndPointFormatter)
-        }
-        mTimeDomainPlotAdapterCh3 = XYPlotAdapter(findViewById(R.id.eogCh3XYPlot), false, 1000)
-        if (mTimeDomainPlotAdapterCh3!!.xyPlot != null) {
-            mTimeDomainPlotAdapterCh3?.xyPlot?.addSeries(mGraphAdapterCh3?.series, mGraphAdapterCh3?.lineAndPointFormatter)
-        }
+//        mTimeDomainPlotAdapterCh2 = XYPlotAdapter(findViewById(R.id.frequencyAnalysisXYPlot), false, 1000)
+//        if (mTimeDomainPlotAdapterCh2!!.xyPlot != null) {
+//            mTimeDomainPlotAdapterCh2!!.xyPlot!!.addSeries(mGraphAdapterCh2!!.series, mGraphAdapterCh2!!.lineAndPointFormatter)
+//        }
 
-        val xyPlotList = listOf(mTimeDomainPlotAdapterCh1!!.xyPlot, mTimeDomainPlotAdapterCh2!!.xyPlot, mTimeDomainPlotAdapterCh3?.xyPlot)
+        val xyPlotList = listOf(mTimeDomainPlotAdapterCh1!!.xyPlot)
         mRedrawer = Redrawer(xyPlotList, 30f, false)
         mRedrawer!!.start()
         mGraphInitializedBoolean = true
@@ -510,11 +486,11 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
                     }
                     if (service.getCharacteristic(AppConstant.CHAR_EEG_CH2_SIGNAL) != null) {
                         mActBle!!.setCharacteristicNotifications(gatt, service.getCharacteristic(AppConstant.CHAR_EEG_CH2_SIGNAL), true)
-                        if (mCh2 == null) mCh2 = DataChannel(false, mMSBFirst, 4 * mSampleRate)
+//                        if (mCh2 == null) mCh2 = DataChannel(false, mMSBFirst, 4 * mSampleRate)
                     }
                     if (service.getCharacteristic(AppConstant.CHAR_EEG_CH3_SIGNAL) != null) {
                         mActBle!!.setCharacteristicNotifications(gatt, service.getCharacteristic(AppConstant.CHAR_EEG_CH3_SIGNAL), true)
-                        if (mCh3 == null) mCh3 = DataChannel(false, mMSBFirst, 4 * mSampleRate)
+//                        if (mCh3 == null) mCh3 = DataChannel(false, mMSBFirst, 4 * mSampleRate)
                     }
                     if (service.getCharacteristic(AppConstant.CHAR_EEG_CH4_SIGNAL) != null)
                         mActBle!!.setCharacteristicNotifications(gatt, service.getCharacteristic(AppConstant.CHAR_EEG_CH4_SIGNAL), true)
@@ -576,7 +552,6 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
                 }
                 //RESET mCH1 & mCH2:
                 mCh1?.classificationBufferSize = 4 * mSampleRate
-                mCh2?.classificationBufferSize = 4 * mSampleRate
                 Log.e(TAG, "Updated Sample Rate: " + mSampleRate.toString())
             }
         }
@@ -601,46 +576,23 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
         }
 
         if (AppConstant.CHAR_EEG_CH2_SIGNAL == characteristic.uuid) {
-            if (!mCh2!!.chEnabled) {
-                mCh2!!.chEnabled = true
-            }
             val mNewEEGdataBytes = characteristic.value
             val byteLength = mNewEEGdataBytes.size
             getDataRateBytes(byteLength)
-            if (mEEGConnectedAllChannels) {
-                mCh2!!.handleNewData(mNewEEGdataBytes)
-                if (mCh2!!.packetCounter.toInt() == mPacketBuffer) {
-                    addToGraphBuffer(mCh2!!, mGraphAdapterCh2)
-                }
-            }
         }
 
         if (AppConstant.CHAR_EEG_CH3_SIGNAL == characteristic.uuid) {
-            if (!mCh3!!.chEnabled) {
-                mCh3!!.chEnabled = true
-            }
             val mNewEEGdataBytes = characteristic.value
             val byteLength = mNewEEGdataBytes.size
             getDataRateBytes(byteLength)
-            if (mEEGConnectedAllChannels) {
-                mCh3!!.handleNewData(mNewEEGdataBytes)
-                if (mCh3!!.packetCounter.toInt() == mPacketBuffer) {
-                    addToGraphBuffer(mCh3!!, mGraphAdapterCh3)
-                }
-            }
         }
 
-        if (mCh1!!.chEnabled && mCh2!!.chEnabled && mCh3!!.chEnabled) {
+        if (mCh1!!.chEnabled) {
             mNumber2ChPackets++
             mEEGConnectedAllChannels = true
             mCh1!!.chEnabled = false
-            mCh2!!.chEnabled = false
-            mCh3!!.chEnabled = false
-            if (mCh1!!.characteristicDataPacketBytes != null &&
-                    mCh2!!.characteristicDataPacketBytes != null &&
-                    mCh3!!.characteristicDataPacketBytes != null) {
-                mPrimarySaveDataFile!!.writeToDisk(mCh1?.characteristicDataPacketBytes,
-                        mCh2?.characteristicDataPacketBytes, mCh3?.characteristicDataPacketBytes)
+            if (mCh1!!.characteristicDataPacketBytes != null) {
+                mPrimarySaveDataFile!!.writeToDisk(mCh1?.characteristicDataPacketBytes)
             }
         }
     }
