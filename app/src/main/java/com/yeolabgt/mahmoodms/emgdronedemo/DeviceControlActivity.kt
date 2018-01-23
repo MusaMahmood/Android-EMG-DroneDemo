@@ -1,6 +1,7 @@
 package com.yeolabgt.mahmoodms.emgdronedemo
 
 import android.app.Activity
+import android.app.ProgressDialog
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCharacteristic
@@ -9,6 +10,7 @@ import android.bluetooth.BluetoothGattService
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
 import android.content.Context
+import android.content.DialogInterface
 import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.graphics.Color
@@ -20,14 +22,18 @@ import android.os.Handler
 import android.support.v4.app.NavUtils
 import android.support.v4.content.FileProvider
 import android.util.Log
-import android.view.Menu
-import android.view.MenuItem
-import android.view.View
-import android.view.WindowManager
+import android.view.*
 import android.widget.*
 
 import com.androidplot.util.Redrawer
+import com.parrot.arsdk.arcommands.ARCOMMANDS_MINIDRONE_MEDIARECORDEVENT_PICTUREEVENTCHANGED_ERROR_ENUM
+import com.parrot.arsdk.arcommands.ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_ENUM
+import com.parrot.arsdk.arcontroller.ARCONTROLLER_DEVICE_STATE_ENUM
+import com.parrot.arsdk.arcontroller.ARControllerCodec
+import com.parrot.arsdk.arcontroller.ARFrame
+import com.parrot.arsdk.ardiscovery.ARDiscoveryDeviceService
 import com.yeolabgt.mahmoodms.actblelibrary.ActBle
+import com.yeolabgt.mahmoodms.emgdronedemo.ParrotDrone.MiniDrone
 
 import java.io.IOException
 import java.text.SimpleDateFormat
@@ -84,6 +90,20 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
     private lateinit var mMediaBeep: MediaPlayer
     //Tensorflow:
 
+    //Drone Interface Stuff:
+    private var mMiniDrone: MiniDrone? = null
+    private var mDronePresent = false
+    private var mDroneControl = false //Default classifier.
+    private var mConnectionProgressDialog: ProgressDialog? = null
+    private var mDownloadProgressDialog: ProgressDialog? = null
+    private var mTakeOffLandBt: Button? = null
+    private var mConnectDroneButton: Button? = null
+    private var mDroneConnectionState = false
+    private var mBatteryLevelDrone: TextView? = null
+    private var mNbMaxDownload: Int = 0
+    private var mCurrentDownloadIndex: Int = 0
+    private var mARService: ARDiscoveryDeviceService? = null
+
     private val timeStamp: String
         get() = SimpleDateFormat("yyyy.MM.dd_HH.mm.ss", Locale.US).format(Date())
 
@@ -123,11 +143,13 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         //Set up TextViews
         val mExportButton = findViewById<Button>(R.id.button_export)
+        mConnectDroneButton = findViewById(R.id.droneConnectButton)
         mBatteryLevel = findViewById(R.id.batteryText)
         mDataRate = findViewById(R.id.dataRate)
         mTrainingInstructions = findViewById(R.id.trainingInstructions)
         mEMGClassText = findViewById(R.id.emgClassText)
         mYfitTextView = findViewById(R.id.textViewYfit) //TODO: Assign after classifiying (TF)
+        mTakeOffLandBt = findViewById(R.id.buttonS)
         mDataRate!!.text = "..."
         val ab = getActionBar()
         ab!!.title = mDeviceName
@@ -143,7 +165,156 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             }
             mGraphAdapterCh1!!.plotData = b
         }
+        val resetButton = findViewById<Button>(R.id.resetActivityButton)
+        resetButton.setOnClickListener {
+            finish()
+        }
+        val toggleButton1 = findViewById<ToggleButton>(R.id.toggleButtonDroneControl)
+        toggleButton1.setOnCheckedChangeListener { _, b ->
+            mDroneControl = b
+        }
         mExportButton.setOnClickListener { exportData() }
+        findViewById<View>(R.id.buttonFwd).setOnTouchListener { v, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    v.isPressed = true
+                    mMiniDrone?.setPitch(50.toByte())
+                    mMiniDrone?.setFlag(1.toByte())
+                }
+
+                MotionEvent.ACTION_UP -> {
+                    mMiniDrone?.setPitch(0.toByte())
+                    mMiniDrone?.setFlag(0.toByte())
+                }
+                else -> {
+                }
+            }
+            true
+        }
+        findViewById<View>(R.id.buttonR).setOnTouchListener { v, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    v.isPressed = true
+                    mMiniDrone?.setYaw(50.toByte())
+                }
+
+                MotionEvent.ACTION_UP -> {
+                    v.isPressed = false
+                    mMiniDrone?.setYaw(0.toByte())
+                }
+
+                else -> {
+                }
+            }
+
+            true
+        }
+        mTakeOffLandBt?.setOnClickListener(View.OnClickListener {
+            when (mMiniDrone?.flyingState) {
+                ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_ENUM.ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_LANDED -> mMiniDrone?.takeOff()
+                ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_ENUM.ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_FLYING, ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_ENUM.ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_HOVERING -> mMiniDrone?.land()
+                else -> {/*Do Nothing*/}
+            }
+        })
+        mConnectDroneButton?.setOnClickListener(View.OnClickListener {
+            if (!mDroneConnectionState) {
+                if (connectDrone()) {
+                    mDroneConnectionState = true
+                    val s = "Disconnect"
+                    mConnectDroneButton?.text = s
+                }
+            } else {
+                if (disconnectDrone()) {
+                    mDroneConnectionState = false
+                    val s = "Connect"
+                    mConnectDroneButton?.text = s
+                }
+            }
+            Log.d(TAG, "onClick: mDroneConnectionState: " + mDroneConnectionState.toString())
+        })
+        mARService = intent.getParcelableExtra(MainActivity.EXTRA_DRONE_SERVICE)
+    }
+
+    private fun disconnectDrone(): Boolean {
+        if (mMiniDrone != null) {
+            mConnectionProgressDialog = ProgressDialog(this, R.style.AppCompatAlertDialogStyle)
+            mConnectionProgressDialog?.isIndeterminate = true
+            mConnectionProgressDialog?.setMessage("Disconnecting ...")
+            mConnectionProgressDialog?.setCancelable(false)
+            mConnectionProgressDialog?.show()
+            if (!mMiniDrone!!.disconnect()) {
+                finish()
+                return false
+            }
+        }
+        return true
+    }
+
+    private fun connectDrone(): Boolean {
+        if (mARService != null) {
+            mBatteryLevelDrone?.setVisibility(View.VISIBLE)
+            mDronePresent = true
+            mMiniDrone = MiniDrone(this, mARService!!)
+            mMiniDrone?.addListener(mMiniDroneListener)
+            if (mMiniDrone != null && ARCONTROLLER_DEVICE_STATE_ENUM.ARCONTROLLER_DEVICE_STATE_RUNNING != mMiniDrone?.getConnectionState()) {
+                mConnectionProgressDialog = ProgressDialog(this, R.style.AppCompatAlertDialogStyle)
+                mConnectionProgressDialog?.setIndeterminate(true)
+                mConnectionProgressDialog?.setMessage("Connecting ...")
+                mConnectionProgressDialog?.setCancelable(false)
+                mConnectionProgressDialog?.show()
+                // if the connection to the MiniDrone fails, finish the activity
+                if (!mMiniDrone!!.connect()) {
+                    Toast.makeText(applicationContext, "Failed to Connect Drone", Toast.LENGTH_LONG).show()
+                    finish()
+                    return false
+                }
+                return true
+            } else {
+                return false
+            }
+        } else {
+            Log.e(TAG, "Drone Service is Null")
+            return false
+        }
+    }
+
+    private fun sendDroneCommand(command: Int) {
+        if (mDronePresent && mDroneControl) {
+            when (command) {
+                0 ->
+                    //Do nothing/Hover
+                    if (mMiniDrone != null) {
+                        //Reset conditions:
+                        mMiniDrone?.setYaw(0.toByte())
+                        mMiniDrone?.setPitch(0.toByte())
+                        mMiniDrone?.setFlag(0.toByte())
+                    }
+                1 ->
+                    //Move Fwd:
+                    if (mMiniDrone != null) {
+                        mMiniDrone?.setPitch(50.toByte())
+                        mMiniDrone?.setFlag(1.toByte())
+                    }
+                2 ->
+                    //RotR
+                    if (mMiniDrone != null) {
+                        mMiniDrone?.setYaw(50.toByte())
+                    }
+                3 ->
+                    // Take off or Land
+                    if (mMiniDrone != null) {
+                        when (mMiniDrone?.getFlyingState()) {
+                            ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_ENUM.ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_LANDED -> mMiniDrone?.takeOff()
+                            ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_ENUM.ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_FLYING,
+                                //Do nothing.
+                            ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_ENUM.ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_HOVERING -> mMiniDrone?.land()
+                            else -> {}
+                        }
+                    }
+                else -> {
+                }
+            }
+        }
     }
 
     private fun exportData() {
@@ -899,6 +1070,89 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             } else {
                 val newStatus = "Status: " + getString(R.string.disconnected)
                 statusActionItem.title = newStatus
+            }
+        }
+    }
+
+    private val mMiniDroneListener = object : MiniDrone.Listener {
+        override fun onDroneConnectionChanged(state: ARCONTROLLER_DEVICE_STATE_ENUM) {
+            when (state) {
+                ARCONTROLLER_DEVICE_STATE_ENUM.ARCONTROLLER_DEVICE_STATE_RUNNING -> mConnectionProgressDialog?.dismiss()
+
+                ARCONTROLLER_DEVICE_STATE_ENUM.ARCONTROLLER_DEVICE_STATE_STOPPED -> {
+                    // if the deviceController is stopped, go back to the previous activity
+                    mConnectionProgressDialog?.dismiss()
+                    finish()
+                }
+
+                else -> {
+                }
+            }
+        }
+
+        override fun onBatteryChargeChanged(batteryPercentage: Int) {
+            val batteryFormatted = String.format(Locale.US, "Drone Battery: [%d%%]", batteryPercentage)
+            mBatteryLevelDrone?.setText(batteryFormatted)
+        }
+
+        override fun onPilotingStateChanged(state: ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_ENUM) {
+            when (state) {
+                ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_ENUM.ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_LANDED -> {
+                    val to = "Take off"
+                    mTakeOffLandBt?.setText(to)
+                    mTakeOffLandBt?.setEnabled(true)
+                }
+                ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_ENUM.ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_FLYING, ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_ENUM.ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_HOVERING -> {
+                    val ld = "Land"
+                    mTakeOffLandBt?.setText(ld)
+                    mTakeOffLandBt?.setEnabled(true)
+                }
+                else -> mTakeOffLandBt?.setEnabled(false)
+            }
+        }
+
+        override fun onPictureTaken(error: ARCOMMANDS_MINIDRONE_MEDIARECORDEVENT_PICTUREEVENTCHANGED_ERROR_ENUM) {
+            Log.i(TAG, "Picture has been taken")
+        }
+
+        override fun configureDecoder(codec: ARControllerCodec) {
+            //            mVideoView.configureDecoder(codec);
+        }
+
+        override fun onFrameReceived(frame: ARFrame) {
+            //            mVideoView.displayFrame(frame);
+        }
+
+        override fun onMatchingMediasFound(nbMedias: Int) {
+            mDownloadProgressDialog?.dismiss()
+            mNbMaxDownload = nbMedias
+            mCurrentDownloadIndex = 1
+            if (nbMedias > 0) {
+                mDownloadProgressDialog = ProgressDialog(this@DeviceControlActivity, R.style.AppCompatAlertDialogStyle)
+                mDownloadProgressDialog?.setIndeterminate(false)
+                mDownloadProgressDialog?.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL)
+                mDownloadProgressDialog?.setMessage("Downloading medias")
+                mDownloadProgressDialog?.setMax(mNbMaxDownload * 100)
+                mDownloadProgressDialog?.setSecondaryProgress(mCurrentDownloadIndex * 100)
+                mDownloadProgressDialog?.setProgress(0)
+                mDownloadProgressDialog?.setCancelable(false)
+                mDownloadProgressDialog?.setButton(DialogInterface.BUTTON_NEGATIVE, "Cancel", DialogInterface.OnClickListener { _, _ ->
+                    mMiniDrone?.cancelGetLastFlightMedias() })
+                mDownloadProgressDialog?.show()
+            }
+        }
+
+        override fun onDownloadProgressed(mediaName: String, progress: Int) {
+            mDownloadProgressDialog?.setProgress((mCurrentDownloadIndex - 1) * 100 + progress)
+        }
+
+        override fun onDownloadComplete(mediaName: String) {
+            mCurrentDownloadIndex++
+            mDownloadProgressDialog?.setSecondaryProgress(mCurrentDownloadIndex * 100)
+
+            if (mCurrentDownloadIndex > mNbMaxDownload) {
+                mDownloadProgressDialog?.dismiss()
+                mDownloadProgressDialog = null
             }
         }
     }

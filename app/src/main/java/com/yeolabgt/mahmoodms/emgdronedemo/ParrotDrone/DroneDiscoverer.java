@@ -62,7 +62,6 @@ public class DroneDiscoverer
      */
     public void addListener(Listener listener) {
         mListeners.add(listener);
-
         notifyServiceDiscovered(mMatchingDrones);
     }
 
