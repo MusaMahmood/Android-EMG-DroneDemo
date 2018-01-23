@@ -97,4 +97,7 @@ dependencies {
     if (nativeBuildSystem == 'cmake' || nativeBuildSystem == 'none') {
         compile 'org.tensorflow:tensorflow-android:+'
     }
+
+    //Parrot Drones SDK
+    compile 'com.parrot:arsdk:3.13.0'
 }

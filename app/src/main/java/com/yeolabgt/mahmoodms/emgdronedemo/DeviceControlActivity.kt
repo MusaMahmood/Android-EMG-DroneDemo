@@ -22,6 +22,7 @@ import android.support.v4.content.FileProvider
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
+import android.view.View
 import android.view.WindowManager
 import android.widget.*
 
@@ -65,6 +66,9 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
     //UI Elements - TextViews, Buttons, etc
     private var mBatteryLevel: TextView? = null
     private var mDataRate: TextView? = null
+    private var mTrainingInstructions: TextView? = null
+    private var mEMGClassText: TextView? = null
+    private var mYfitTextView: TextView? = null
     private var mTogglePlots: ToggleButton? = null
     private var menu: Menu? = null
     //Data throughput counter
@@ -88,9 +92,11 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
 
     public override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_device_control)
+//        setContentView(R.layout.activity_device_control)
+        setContentView(R.layout.activit_dev_ctrl_alt)
         //Set orientation of device based on screen type/size:
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+        //Receive Intents:
         //Receive Intents:
         val intent = intent
         deviceMacAddresses = intent.getStringArrayExtra(MainActivity.INTENT_DEVICES_KEY)
@@ -119,6 +125,9 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
         val mExportButton = findViewById<Button>(R.id.button_export)
         mBatteryLevel = findViewById(R.id.batteryText)
         mDataRate = findViewById(R.id.dataRate)
+        mTrainingInstructions = findViewById(R.id.trainingInstructions)
+        mEMGClassText = findViewById(R.id.emgClassText)
+        mYfitTextView = findViewById(R.id.textViewYfit) //TODO: Assign after classifiying (TF)
         mDataRate!!.text = "..."
         val ab = getActionBar()
         ab!!.title = mDeviceName
@@ -219,7 +228,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             mGraphAdapterCh1!!.setxAxisIncrementFromSampleRate(mSampleRate)
 
             mGraphAdapterCh1!!.setSeriesHistoryDataPoints(250 * 5)
-            val fileNameTimeStamped = "EMG_VergenceData_" + timeStamp + "_" + mSampleRate.toString() + "Hz"
+            val fileNameTimeStamped = "EMG_1ChData_" + timeStamp + "_" + mSampleRate.toString() + "Hz"
             Log.e(TAG, "fileTimeStamp: " + fileNameTimeStamped)
             try {
                 mPrimarySaveDataFile = SaveDataFile("/EMGData", fileNameTimeStamped,
@@ -230,7 +239,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
 
             mPrimarySaveDataFile!!.setSaveTimestamps(false)
             mPrimarySaveDataFile!!.setFpPrecision(64)
-            mPrimarySaveDataFile!!.setIncludeClass(false)
+            mPrimarySaveDataFile!!.setIncludeClass(true)
         }
         mBleInitializedBoolean = true
     }
@@ -243,7 +252,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
         mGraphAdapterCh1!!.plotData = true
         mGraphAdapterCh1!!.setPointWidth(2.toFloat())
 
-        mTimeDomainPlotAdapterCh1 = XYPlotAdapter(findViewById(R.id.eegTimeDomainXYPlot), false, 1000)
+        mTimeDomainPlotAdapterCh1 = XYPlotAdapter(findViewById(R.id.emgTimeDomainXYPlot), false, 1000)
         if (mTimeDomainPlotAdapterCh1!!.xyPlot != null) {
             mTimeDomainPlotAdapterCh1!!.xyPlot!!.addSeries(mGraphAdapterCh1!!.series, mGraphAdapterCh1!!.lineAndPointFormatter)
         }
@@ -570,7 +579,8 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             if (mEEGConnectedAllChannels) {
                 mCh1!!.handleNewData(mNewEEGdataBytes)
                 if (mCh1!!.packetCounter.toInt() == mPacketBuffer) {
-                    addToGraphBuffer(mCh1!!, mGraphAdapterCh1)
+                    addToGraphBuffer(mCh1!!, mGraphAdapterCh1, true)
+                    //TODO: Update Training Routine
                 }
             }
         }
@@ -595,9 +605,14 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
                 mPrimarySaveDataFile!!.writeToDisk(mCh1?.characteristicDataPacketBytes)
             }
         }
+
+        runOnUiThread {
+            val concat = "C:[$mEMGClass]"
+            mEMGClassText?.text = concat
+        }
     }
 
-    private fun addToGraphBuffer(dataChannel: DataChannel, graphAdapter: GraphAdapter?) {
+    private fun addToGraphBuffer(dataChannel: DataChannel, graphAdapter: GraphAdapter?, updateTrainingRoutine: Boolean) {
         if (mFilterData && dataChannel.totalDataPointsReceived > 1000) {
             val filteredData = mNativeInterface.jSSVEPCfilter(dataChannel.classificationBuffer)
             graphAdapter!!.clearPlot()
@@ -614,6 +629,11 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
                         graphAdapter!!.addDataPointTimeDomain(DataChannel.bytesToDouble(dataChannel.dataBuffer!![3 * i],
                                 dataChannel.dataBuffer!![3 * i + 1], dataChannel.dataBuffer!![3 * i + 2]),
                                 dataChannel.totalDataPointsReceived - dataChannel.dataBuffer!!.size / 3 + i)
+                        if (updateTrainingRoutine) {
+                            for (j in 0 until graphAdapter.sampleRate / 250) {
+                                updateTrainingRoutine(dataChannel.totalDataPointsReceived - dataChannel.dataBuffer!!.size / 3 + i + j)
+                            }
+                        }
                         i += graphAdapter.sampleRate / 250
                     }
                 } else if (mPrimarySaveDataFile!!.resolutionBits == 16) {
@@ -622,6 +642,11 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
                         graphAdapter!!.addDataPointTimeDomain(DataChannel.bytesToDouble(dataChannel.dataBuffer!![2 * i],
                                 dataChannel.dataBuffer!![2 * i + 1]),
                                 dataChannel.totalDataPointsReceived - dataChannel.dataBuffer!!.size / 2 + i)
+                        if (updateTrainingRoutine) {
+                            for (j in 0 until graphAdapter.sampleRate / 250) {
+                                updateTrainingRoutine(dataChannel.totalDataPointsReceived - dataChannel.dataBuffer!!.size / 2 + i + j)
+                            }
+                        }
                         i += graphAdapter.sampleRate / 250
                     }
                 }
@@ -630,6 +655,91 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
 
         dataChannel.dataBuffer = null
         dataChannel.packetCounter = 0.toShort()
+    }
+
+    private fun updateTrainingRoutine(dataPoints: Int) {
+        if (dataPoints % mSampleRate == 0 && mRunTrainingBool) {
+            val second = dataPoints / mSampleRate
+            val mSDS = mStimulusDelaySeconds.toInt()
+            var eventSecondCountdown = 0
+            if (second >= 0 && second < mSDS) {
+                eventSecondCountdown = mSDS - second
+                updateTrainingPrompt("Relax hand")
+                updateTrainingPromptColor(Color.GREEN)
+                mEMGClass = 0.0
+            } else if (second >= mSDS && second < 2 * mSDS) {
+                eventSecondCountdown = 2 * mSDS - second
+                updateTrainingPrompt("Close Hand")
+                mEMGClass = 1.0
+            } else if (second >= 2 * mSDS && second < 3 * mSDS) {
+                eventSecondCountdown = 3 * mSDS - second
+                updateTrainingPrompt("Relax hand")
+                updateTrainingPromptColor(Color.GREEN)
+                mEMGClass = 0.0
+            } else if (second >= 3 * mSDS && second < 4 * mSDS) {
+                eventSecondCountdown = 4 * mSDS - second
+                updateTrainingPrompt("Rotate Hand")
+                mEMGClass = 2.0
+            } else if (second >= 4 * mSDS && second < 5 * mSDS) {
+                eventSecondCountdown = 5 * mSDS - second
+                updateTrainingPrompt("Relax hand")
+                updateTrainingPromptColor(Color.GREEN)
+                mEMGClass = 0.0
+            } else if (second >= 5 * mSDS && second < 6 * mSDS) {
+                eventSecondCountdown = 6 * mSDS - second
+                updateTrainingPrompt("Forwards & Backwards")
+                updateTrainingPromptColor(Color.GREEN)
+                mEMGClass = 3.0
+            } else if (second >= 6 * mSDS && second < 7 * mSDS) {
+                eventSecondCountdown = 7 * mSDS - second
+                updateTrainingPrompt("Stop!")
+                updateTrainingPromptColor(Color.RED)
+                mEMGClass = 0.0
+            } else if (second >= 7 * mSDS && second < 8 * mSDS) {
+                eventSecondCountdown = 8 * mSDS - second
+                updateTrainingPrompt("Stop!")
+                updateTrainingPromptColor(Color.RED)
+                updateTrainingView(false)
+                disconnectAllBLE()
+//                if (mUseCustomParams) {
+//                    runOnUiThread { Toast.makeText(applicationContext, "Training Data Loaded", Toast.LENGTH_LONG).show() }
+//                    mRunTrainingBool = false
+//                } else {
+//                    if (TrainingData != null) {
+//                        if (TrainingData.ERROR) {
+//                            runOnUiThread { Toast.makeText(applicationContext, "TrainingData.ERROR \n Failed to Load Training Data", Toast.LENGTH_LONG).show() }
+//                        }
+//                    }
+//                }
+            }
+            if (eventSecondCountdown == mSDS) {
+                mMediaBeep.start()
+            }
+        }
+    }
+
+    private fun updateTrainingPrompt(prompt: String) {
+        runOnUiThread {
+            if (mRunTrainingBool) {
+                mTrainingInstructions?.text = prompt
+            }
+        }
+    }
+
+    private fun updateTrainingView(b: Boolean) {
+        val visibility = if (b) View.VISIBLE else View.GONE
+        runOnUiThread {
+            mTrainingInstructions?.visibility = visibility
+            mEMGClassText?.visibility = visibility
+        }
+    }
+
+    private fun updateTrainingPromptColor(color: Int) {
+        runOnUiThread {
+            if (mRunTrainingBool) {
+                mTrainingInstructions?.setTextColor(color)
+            }
+        }
     }
 
     private fun getDataRateBytes(bytes: Int) {
@@ -799,7 +909,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
         var mRedrawer: Redrawer? = null
         // Power Spectrum Graph Data:
         private var mSampleRate = 250
-        var mSSVEPClass = 0.0
+        var mEMGClass = 0.0 //TODO:
         //Data Channel Classes
         internal var mFilterData = false
         private var mPacketBuffer = 6
