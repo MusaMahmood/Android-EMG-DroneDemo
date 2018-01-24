@@ -18,9 +18,11 @@ import android.graphics.Typeface
 import android.graphics.drawable.ColorDrawable
 import android.media.MediaPlayer
 import android.os.Bundle
+import android.os.Environment
 import android.os.Handler
 import android.support.v4.app.NavUtils
 import android.support.v4.content.FileProvider
+import android.support.v4.content.MimeTypeFilter
 import android.util.Log
 import android.view.*
 import android.widget.*
@@ -34,6 +36,8 @@ import com.parrot.arsdk.arcontroller.ARFrame
 import com.parrot.arsdk.ardiscovery.ARDiscoveryDeviceService
 import com.yeolabgt.mahmoodms.actblelibrary.ActBle
 import com.yeolabgt.mahmoodms.emgdronedemo.ParrotDrone.MiniDrone
+import org.tensorflow.contrib.android.TensorFlowInferenceInterface
+import java.io.File
 
 import java.io.IOException
 import java.text.SimpleDateFormat
@@ -67,7 +71,8 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
     private var mEEGConfigGattIndex: Int = 0
     private var mEEGConnectedAllChannels = false
     // Classification
-    private var mNumber2ChPackets = -1
+    private var mNumberPackets = -1
+    private var mNumberOfClassifierCalls = 0
     private var mRunTrainingBool: Boolean = false
     //UI Elements - TextViews, Buttons, etc
     private var mBatteryLevel: TextView? = null
@@ -89,6 +94,9 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
     //Play Sound:
     private lateinit var mMediaBeep: MediaPlayer
     //Tensorflow:
+    private var mTFRunModel = false
+    private var mTFInferenceInterface: TensorFlowInferenceInterface? = null
+    private var mTensorflowWindowSize = 128
 
     //Drone Interface Stuff:
     private var mMiniDrone: MiniDrone? = null
@@ -112,7 +120,6 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
 
     public override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-//        setContentView(R.layout.activity_device_control)
         setContentView(R.layout.activit_dev_ctrl_alt)
         //Set orientation of device based on screen type/size:
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
@@ -233,6 +240,32 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             Log.d(TAG, "onClick: mDroneConnectionState: " + mDroneConnectionState.toString())
         })
         mARService = intent.getParcelableExtra(MainActivity.EXTRA_DRONE_SERVICE)
+        initializeTensorflowInterface()
+    }
+
+    private fun initializeTensorflowInterface() {
+        val customModelPath = Environment.getExternalStorageDirectory().absolutePath + "/Download/tensorflow_assets/"
+        val modelPath = customModelPath + "opt_emg_2cnn_1ch_wlen128.pb"
+        Log.d(TAG, "customModel Wlen128: exists? "+File(modelPath).exists().toString())
+        mTensorflowWindowSize = 128
+        when {
+            File(modelPath).exists() -> {
+                mTFInferenceInterface = TensorFlowInferenceInterface(assets, modelPath)
+                //Reset counter:
+                mNumberOfClassifierCalls = 1
+                mTFRunModel = true
+                Log.i(TAG, "Tensorflow: customModel loaded")
+                Toast.makeText(applicationContext, "Tensorflow: Model Loaded", Toast.LENGTH_LONG).show()
+            }
+//            embeddedModel.exists() -> { //Check if there's a model included:
+//                mTFRunModel = false
+//                Toast.makeText(applicationContext, "No TF Model Found!", Toast.LENGTH_LONG).show()
+//            }
+            else -> { // No model found, continuing with original (reset switch)
+                mTFRunModel = false
+                Toast.makeText(applicationContext, "No TF Model Found!", Toast.LENGTH_LONG).show()
+            }
+        }
     }
 
     private fun disconnectDrone(): Boolean {
@@ -752,6 +785,9 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
                 if (mCh1!!.packetCounter.toInt() == mPacketBuffer) {
                     addToGraphBuffer(mCh1!!, mGraphAdapterCh1, true)
                     //TODO: Update Training Routine
+                    if (mNumberPackets % 10 == 0) {
+                        classifyEMG()
+                    }
                 }
             }
         }
@@ -769,7 +805,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
         }
 
         if (mCh1!!.chEnabled) {
-            mNumber2ChPackets++
+            mNumberPackets++
             mEEGConnectedAllChannels = true
             mCh1!!.chEnabled = false
             if (mCh1!!.characteristicDataPacketBytes != null) {
@@ -780,6 +816,28 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
         runOnUiThread {
             val concat = "C:[$mEMGClass]"
             mEMGClassText?.text = concat
+        }
+    }
+
+    private fun classifyEMG() {
+        val y = 0.0
+        if (mTFRunModel) {
+            val outputScores = FloatArray(4)
+            val end = mCh1!!.classificationBuffer.size - 1 //E.g. if size = 500, end = 499
+            val from = end - 128
+            val ch1Input = Arrays.copyOfRange(mCh1!!.classificationBufferFloats, from, end)
+            val rescaledInput = mNativeInterface.jrescaleMinmaxw128(ch1Input)
+            Log.i(TAG, "onCharacteristicChanged: TF_PRECALL_TIME, N#" + mNumberOfClassifierCalls.toString())
+            mTFInferenceInterface?.feed("keep_prob", floatArrayOf(1f))
+            mTFInferenceInterface?.feed(INPUT_DATA_FEED, rescaledInput, 128L)
+            mTFInferenceInterface?.run(arrayOf(OUTPUT_DATA_FEED))
+            mTFInferenceInterface?.fetch(OUTPUT_DATA_FEED, outputScores)
+            val yTF = DataChannel.getIndexOfLargest(outputScores)
+            Log.i(TAG, "CALL#" + mNumberOfClassifierCalls.toString() + ":\n" +
+                    "TF outputScores: " + Arrays.toString(outputScores))
+            val s = "TFout: \n [" + yTF.toString() + "]"
+            runOnUiThread { mYfitTextView!!.text = s }
+            mNumberOfClassifierCalls++
         }
     }
 
@@ -1172,6 +1230,9 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
         //Save Data File
         private var mPrimarySaveDataFile: SaveDataFile? = null
         //Tensorflow CONSTANTS:
+        val INPUT_DATA_FEED = "input"
+        val OUTPUT_DATA_FEED = "output"
+        // ADS1299 Register Configs
         val ADS1299_DEFAULT_BYTE_CONFIG = byteArrayOf(
                 0x96.toByte(), 0xD0.toByte(), 0xEC.toByte(), 0x00.toByte(), //CONFIG1-3, LOFF
                 0x40.toByte(), 0x40.toByte(), 0xE1.toByte(), 0xE1.toByte(), //CHSET 1-4

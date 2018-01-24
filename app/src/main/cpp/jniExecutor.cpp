@@ -17,6 +17,85 @@
 #define  LOG_TAG "jniExecutor-cpp"
 #define  LOGE(...)  __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
+static void rescale_minmax_floats(const float X[128], float Y[128])
+{
+    int ixstart;
+    float mtmp;
+    int ix;
+    boolean_T exitg1;
+    float b_mtmp;
+    ixstart = 1;
+    mtmp = X[0];
+    if (rtIsNaN(X[0])) {
+        ix = 2;
+        exitg1 = false;
+        while ((!exitg1) && (ix < 129)) {
+            ixstart = ix;
+            if (!rtIsNaN(X[ix - 1])) {
+                mtmp = X[ix - 1];
+                exitg1 = true;
+            } else {
+                ix++;
+            }
+        }
+    }
+
+    if (ixstart < 128) {
+        while (ixstart + 1 < 129) {
+            if (X[ixstart] < mtmp) {
+                mtmp = X[ixstart];
+            }
+
+            ixstart++;
+        }
+    }
+
+    ixstart = 1;
+    b_mtmp = X[0];
+    if (rtIsNaN(X[0])) {
+        ix = 2;
+        exitg1 = false;
+        while ((!exitg1) && (ix < 129)) {
+            ixstart = ix;
+            if (!rtIsNaN(X[ix - 1])) {
+                b_mtmp = X[ix - 1];
+                exitg1 = true;
+            } else {
+                ix++;
+            }
+        }
+    }
+
+    if (ixstart < 128) {
+        while (ixstart + 1 < 129) {
+            if (X[ixstart] > b_mtmp) {
+                b_mtmp = X[ixstart];
+            }
+
+            ixstart++;
+        }
+    }
+
+    b_mtmp -= mtmp;
+    for (ixstart = 0; ixstart < 128; ixstart++) {
+        Y[ixstart] = (X[ixstart] - mtmp) / b_mtmp;
+    }
+}
+
+extern "C" {
+JNIEXPORT jfloatArray JNICALL
+Java_com_yeolabgt_mahmoodms_emgdronedemo_NativeInterfaceClass_jrescaleMinmaxw128(
+        JNIEnv *env, jobject jobject1, jfloatArray data) {
+    jfloat *X = env->GetFloatArrayElements(data, NULL);
+    if (X == NULL) LOGE("ERROR - C_ARRAY IS NULL");
+    float Y[128]; // First two values = Y; last 499 = cPSD
+    jfloatArray m_result = env->NewFloatArray(128);
+    rescale_minmax_floats(X, Y);
+    env->SetFloatArrayRegion(m_result, 0, 128, Y);
+    return m_result;
+}
+}
+
 // Function Definitions
 extern "C" {
 JNIEXPORT jfloatArray JNICALL

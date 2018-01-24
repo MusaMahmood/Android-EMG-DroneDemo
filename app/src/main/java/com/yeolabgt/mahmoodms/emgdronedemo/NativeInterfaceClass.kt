@@ -20,6 +20,8 @@ class NativeInterfaceClass {
     external fun jTFPSDExtraction(a: DoubleArray, length: Int): FloatArray
     @Throws(IllegalArgumentException::class)
     external fun jLoadfPSD(sampleRate: Int, windowLength: Int): DoubleArray
+    @Throws(IllegalArgumentException::class)
+    external fun jrescaleMinmaxw128(data: FloatArray): FloatArray
 
     companion object {
         init {
