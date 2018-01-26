@@ -9,6 +9,7 @@
 #include "tf_psd_rescale_w256.h"
 #include "tf_psd_rescale_w384.h"
 #include "tf_psd_rescale_w512.h"
+#include "emg_hpf_upscale.h"
 
 /*Additional Includes*/
 #include <jni.h>
@@ -17,7 +18,7 @@
 #define  LOG_TAG "jniExecutor-cpp"
 #define  LOGE(...)  __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
-static void rescale_minmax_floats(const float X[128], float Y[128])
+static void rescale_minmax_floats(const float X[], float Y[], const int size)
 {
     int ixstart;
     float mtmp;
@@ -29,7 +30,7 @@ static void rescale_minmax_floats(const float X[128], float Y[128])
     if (rtIsNaN(X[0])) {
         ix = 2;
         exitg1 = false;
-        while ((!exitg1) && (ix < 129)) {
+        while ((!exitg1) && (ix < size + 1)) {
             ixstart = ix;
             if (!rtIsNaN(X[ix - 1])) {
                 mtmp = X[ix - 1];
@@ -40,8 +41,8 @@ static void rescale_minmax_floats(const float X[128], float Y[128])
         }
     }
 
-    if (ixstart < 128) {
-        while (ixstart + 1 < 129) {
+    if (ixstart < size) {
+        while (ixstart + 1 < size + 1) {
             if (X[ixstart] < mtmp) {
                 mtmp = X[ixstart];
             }
@@ -55,7 +56,7 @@ static void rescale_minmax_floats(const float X[128], float Y[128])
     if (rtIsNaN(X[0])) {
         ix = 2;
         exitg1 = false;
-        while ((!exitg1) && (ix < 129)) {
+        while ((!exitg1) && (ix < size + 1)) {
             ixstart = ix;
             if (!rtIsNaN(X[ix - 1])) {
                 b_mtmp = X[ix - 1];
@@ -66,8 +67,8 @@ static void rescale_minmax_floats(const float X[128], float Y[128])
         }
     }
 
-    if (ixstart < 128) {
-        while (ixstart + 1 < 129) {
+    if (ixstart < size) {
+        while (ixstart + 1 < size+1) {
             if (X[ixstart] > b_mtmp) {
                 b_mtmp = X[ixstart];
             }
@@ -77,21 +78,35 @@ static void rescale_minmax_floats(const float X[128], float Y[128])
     }
 
     b_mtmp -= mtmp;
-    for (ixstart = 0; ixstart < 128; ixstart++) {
+    for (ixstart = 0; ixstart < size; ixstart++) {
         Y[ixstart] = (X[ixstart] - mtmp) / b_mtmp;
     }
 }
 
 extern "C" {
 JNIEXPORT jfloatArray JNICALL
-Java_com_yeolabgt_mahmoodms_emgdronedemo_NativeInterfaceClass_jrescaleMinmaxw128(
-        JNIEnv *env, jobject jobject1, jfloatArray data) {
+Java_com_yeolabgt_mahmoodms_emgdronedemo_NativeInterfaceClass_jfiltRescale(
+        JNIEnv *env, jobject jobject1, jdoubleArray data) {
+    jdouble *X = env->GetDoubleArrayElements(data, NULL);
+    if (X == NULL) LOGE("ERROR - C_ARRAY IS NULL");
+    float Y[128];
+    jfloatArray m_result = env->NewFloatArray(128);
+    emg_hpf_upscale(X, Y);
+    env->SetFloatArrayRegion(m_result, 0, 128, Y);
+    return m_result;
+}
+}
+
+extern "C" {
+JNIEXPORT jfloatArray JNICALL
+Java_com_yeolabgt_mahmoodms_emgdronedemo_NativeInterfaceClass_jrescaleMinmax(
+        JNIEnv *env, jobject jobject1, jfloatArray data, jint size) {
     jfloat *X = env->GetFloatArrayElements(data, NULL);
     if (X == NULL) LOGE("ERROR - C_ARRAY IS NULL");
-    float Y[128]; // First two values = Y; last 499 = cPSD
-    jfloatArray m_result = env->NewFloatArray(128);
-    rescale_minmax_floats(X, Y);
-    env->SetFloatArrayRegion(m_result, 0, 128, Y);
+    float Y[size];
+    jfloatArray m_result = env->NewFloatArray(size);
+    rescale_minmax_floats(X, Y, size);
+    env->SetFloatArrayRegion(m_result, 0, size, Y);
     return m_result;
 }
 }

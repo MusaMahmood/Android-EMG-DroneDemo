@@ -22,7 +22,6 @@ import android.os.Environment
 import android.os.Handler
 import android.support.v4.app.NavUtils
 import android.support.v4.content.FileProvider
-import android.support.v4.content.MimeTypeFilter
 import android.util.Log
 import android.view.*
 import android.widget.*
@@ -245,9 +244,9 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
 
     private fun initializeTensorflowInterface() {
         val customModelPath = Environment.getExternalStorageDirectory().absolutePath + "/Download/tensorflow_assets/"
-        val modelPath = customModelPath + "opt_emg_2cnn_1ch_wlen128.pb"
-        Log.d(TAG, "customModel Wlen128: exists? "+File(modelPath).exists().toString())
         mTensorflowWindowSize = 128
+        val modelPath = customModelPath + "opt_emg_2cnn_1ch_wlen"+mTensorflowWindowSize.toString()+".pb"
+        Log.d(TAG, "customModel Wlen128: exists? "+File(modelPath).exists().toString())
         when {
             File(modelPath).exists() -> {
                 mTFInferenceInterface = TensorFlowInferenceInterface(assets, modelPath)
@@ -257,10 +256,6 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
                 Log.i(TAG, "Tensorflow: customModel loaded")
                 Toast.makeText(applicationContext, "Tensorflow: Model Loaded", Toast.LENGTH_LONG).show()
             }
-//            embeddedModel.exists() -> { //Check if there's a model included:
-//                mTFRunModel = false
-//                Toast.makeText(applicationContext, "No TF Model Found!", Toast.LENGTH_LONG).show()
-//            }
             else -> { // No model found, continuing with original (reset switch)
                 mTFRunModel = false
                 Toast.makeText(applicationContext, "No TF Model Found!", Toast.LENGTH_LONG).show()
@@ -732,7 +727,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
         if (status == BluetoothGatt.GATT_SUCCESS) {
             if (AppConstant.CHAR_BATTERY_LEVEL == characteristic.uuid) {
                 if (characteristic.value != null) {
-                    val batteryLevel = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0)
+                    val batteryLevel = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT16, 0)
                     updateBatteryStatus(batteryLevel)
                     Log.i(TAG, "Battery Level :: " + batteryLevel)
                 }
@@ -770,7 +765,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
         }
 
         if (AppConstant.CHAR_BATTERY_LEVEL == characteristic.uuid) {
-            val batteryLevel = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0)!!
+            val batteryLevel = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT16, 0)!!
             updateBatteryStatus(batteryLevel)
         }
 
@@ -824,12 +819,12 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
         if (mTFRunModel) {
             val outputScores = FloatArray(4)
             val end = mCh1!!.classificationBuffer.size - 1 //E.g. if size = 500, end = 499
-            val from = end - 128
-            val ch1Input = Arrays.copyOfRange(mCh1!!.classificationBufferFloats, from, end)
-            val rescaledInput = mNativeInterface.jrescaleMinmaxw128(ch1Input)
+            val from = end - mTensorflowWindowSize
+            val ch1Input = Arrays.copyOfRange(mCh1!!.classificationBuffer, from, end)
+            val rescaledInput = mNativeInterface.jfiltRescale(ch1Input) // mTensorflowWindowSize
             Log.i(TAG, "onCharacteristicChanged: TF_PRECALL_TIME, N#" + mNumberOfClassifierCalls.toString())
             mTFInferenceInterface?.feed("keep_prob", floatArrayOf(1f))
-            mTFInferenceInterface?.feed(INPUT_DATA_FEED, rescaledInput, 128L)
+            mTFInferenceInterface?.feed(INPUT_DATA_FEED, rescaledInput, mTensorflowWindowSize.toLong())
             mTFInferenceInterface?.run(arrayOf(OUTPUT_DATA_FEED))
             mTFInferenceInterface?.fetch(OUTPUT_DATA_FEED, outputScores)
             val yTF = DataChannel.getIndexOfLargest(outputScores)
@@ -837,6 +832,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
                     "TF outputScores: " + Arrays.toString(outputScores))
             val s = "TFout: \n [" + yTF.toString() + "]"
             runOnUiThread { mYfitTextView!!.text = s }
+            sendDroneCommand(yTF)
             mNumberOfClassifierCalls++
         }
     }

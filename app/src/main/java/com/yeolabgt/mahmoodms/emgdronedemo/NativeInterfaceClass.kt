@@ -21,7 +21,9 @@ class NativeInterfaceClass {
     @Throws(IllegalArgumentException::class)
     external fun jLoadfPSD(sampleRate: Int, windowLength: Int): DoubleArray
     @Throws(IllegalArgumentException::class)
-    external fun jrescaleMinmaxw128(data: FloatArray): FloatArray
+    external fun jrescaleMinmax(data: FloatArray, size: Int): FloatArray
+    @Throws(IllegalArgumentException::class)
+    external fun jfiltRescale(data: DoubleArray): FloatArray
 
     companion object {
         init {
