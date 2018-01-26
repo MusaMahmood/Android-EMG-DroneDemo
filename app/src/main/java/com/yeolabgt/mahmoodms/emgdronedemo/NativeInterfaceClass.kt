@@ -23,7 +23,7 @@ class NativeInterfaceClass {
     @Throws(IllegalArgumentException::class)
     external fun jrescaleMinmax(data: FloatArray, size: Int): FloatArray
     @Throws(IllegalArgumentException::class)
-    external fun jfiltRescale(data: DoubleArray): FloatArray
+    external fun jfiltRescale(data: DoubleArray, scaleFactor: Double): FloatArray
 
     companion object {
         init {

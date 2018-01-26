@@ -86,12 +86,12 @@ static void rescale_minmax_floats(const float X[], float Y[], const int size)
 extern "C" {
 JNIEXPORT jfloatArray JNICALL
 Java_com_yeolabgt_mahmoodms_emgdronedemo_NativeInterfaceClass_jfiltRescale(
-        JNIEnv *env, jobject jobject1, jdoubleArray data) {
+        JNIEnv *env, jobject jobject1, jdoubleArray data, jdouble scale_factor) {
     jdouble *X = env->GetDoubleArrayElements(data, NULL);
     if (X == NULL) LOGE("ERROR - C_ARRAY IS NULL");
     float Y[128];
     jfloatArray m_result = env->NewFloatArray(128);
-    emg_hpf_upscale(X, Y);
+    emg_hpf_upscale(X, Y, scale_factor);
     env->SetFloatArrayRegion(m_result, 0, 128, Y);
     return m_result;
 }

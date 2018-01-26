@@ -19,7 +19,7 @@
 #include "emg_hpf_upscale_types.h"
 
 // Function Declarations
-extern void emg_hpf_upscale(const double X[128], float Y[128]);
+extern void emg_hpf_upscale(const double X[128], float Y[128], double scale_factor);
 extern void emg_hpf_upscale_initialize();
 extern void emg_hpf_upscale_terminate();
 

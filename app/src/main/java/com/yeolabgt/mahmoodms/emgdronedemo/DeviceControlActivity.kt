@@ -96,6 +96,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
     private var mTFRunModel = false
     private var mTFInferenceInterface: TensorFlowInferenceInterface? = null
     private var mTensorflowWindowSize = 128
+    private val mClassificationBuffer = IntArray(5)
 
     //Drone Interface Stuff:
     private var mMiniDrone: MiniDrone? = null
@@ -780,7 +781,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
                 if (mCh1!!.packetCounter.toInt() == mPacketBuffer) {
                     addToGraphBuffer(mCh1!!, mGraphAdapterCh1, true)
                     //TODO: Update Training Routine
-                    if (mNumberPackets % 10 == 0) {
+                    if (mNumberPackets % 8 == 0) {
                         classifyEMG()
                     }
                 }
@@ -815,13 +816,12 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
     }
 
     private fun classifyEMG() {
-        val y = 0.0
         if (mTFRunModel) {
             val outputScores = FloatArray(4)
             val end = mCh1!!.classificationBuffer.size - 1 //E.g. if size = 500, end = 499
             val from = end - mTensorflowWindowSize
             val ch1Input = Arrays.copyOfRange(mCh1!!.classificationBuffer, from, end)
-            val rescaledInput = mNativeInterface.jfiltRescale(ch1Input) // mTensorflowWindowSize
+            val rescaledInput = mNativeInterface.jfiltRescale(ch1Input, 15.0) // mTensorflowWindowSize
             Log.i(TAG, "onCharacteristicChanged: TF_PRECALL_TIME, N#" + mNumberOfClassifierCalls.toString())
             mTFInferenceInterface?.feed("keep_prob", floatArrayOf(1f))
             mTFInferenceInterface?.feed(INPUT_DATA_FEED, rescaledInput, mTensorflowWindowSize.toLong())
@@ -830,11 +830,21 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             val yTF = DataChannel.getIndexOfLargest(outputScores)
             Log.i(TAG, "CALL#" + mNumberOfClassifierCalls.toString() + ":\n" +
                     "TF outputScores: " + Arrays.toString(outputScores))
-            val s = "TFout: \n [" + yTF.toString() + "]"
+
+            System.arraycopy(mClassificationBuffer, 1, mClassificationBuffer, 0, 4)
+            mClassificationBuffer[4] = yTF
+            val s = Arrays.toString(mClassificationBuffer)
             runOnUiThread { mYfitTextView!!.text = s }
-            sendDroneCommand(yTF)
+            if (allValuesSame(mClassificationBuffer))
+                sendDroneCommand(yTF)
+            else
+                sendDroneCommand(0)
             mNumberOfClassifierCalls++
         }
+    }
+
+    private fun allValuesSame(y: IntArray): Boolean {
+        return y.map { it == y[0] }.find { it == false } == null
     }
 
     private fun addToGraphBuffer(dataChannel: DataChannel, graphAdapter: GraphAdapter?, updateTrainingRoutine: Boolean) {

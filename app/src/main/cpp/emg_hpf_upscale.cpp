@@ -80,7 +80,7 @@ zi[3], double y[146])
 //                float Y[128]
 // Return Type  : void
 //
-void emg_hpf_upscale(const double X[128], float Y[128])
+void emg_hpf_upscale(const double X[128], float Y[128], double scale_factor)
 {
   double xtmp;
   double d0;
@@ -145,7 +145,7 @@ void emg_hpf_upscale(const double X[128], float Y[128])
   }
 
   for (i = 0; i < 128; i++) {
-    Y[i] = (float)(y[i + 9] * 20.0);
+    Y[i] = (float)(y[i + 9] * scale_factor);
   }
 }
 
