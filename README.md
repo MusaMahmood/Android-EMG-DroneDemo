@@ -1,3 +1,4 @@
-# Android-SSVEP-Interface
+# Android EMG Drone Demo
 
-(Work in progress)
+The purpose of this application is to demonstrate control of a quadcopter drone using a single channel electromyogram. 
+
