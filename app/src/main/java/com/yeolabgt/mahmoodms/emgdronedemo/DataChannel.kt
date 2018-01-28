@@ -37,15 +37,17 @@ internal class DataChannel(var chEnabled: Boolean, MSBFirst: Boolean, //Classifi
      *
      * @param newDataPacket new data packet received via BLE>
      */
-    fun handleNewData(newDataPacket: ByteArray) {
+    fun handleNewData(newDataPacket: ByteArray, mpuData: Boolean) {
         this.characteristicDataPacketBytes = newDataPacket
         if (this.dataBuffer != null) {
             this.dataBuffer = Bytes.concat(this.dataBuffer, newDataPacket)
         } else {
             this.dataBuffer = newDataPacket
         }
-        for (i in 0 until newDataPacket.size / 3) {
-            addToBuffer(bytesToDouble(newDataPacket[3 * i], newDataPacket[3 * i + 1], newDataPacket[3 * i + 2]))
+        if (!mpuData) {
+            for (i in 0 until newDataPacket.size / 3) {
+                addToBuffer(bytesToDouble(newDataPacket[3 * i], newDataPacket[3 * i + 1], newDataPacket[3 * i + 2]))
+            }
         }
         this.totalDataPointsReceived += newDataPacket.size / 3
         this.packetCounter++
@@ -58,6 +60,11 @@ internal class DataChannel(var chEnabled: Boolean, MSBFirst: Boolean, //Classifi
             this.classificationBuffer[this.classificationBufferSize - 1] = a //add to front:
             this.classificationBufferFloats[this.classificationBufferSize - 1] = a.toFloat()
         }
+    }
+
+    fun resetBuffer() {
+        this.dataBuffer = null
+        this.packetCounter = 0
     }
 
     companion object {
@@ -88,6 +95,16 @@ internal class DataChannel(var chEnabled: Boolean, MSBFirst: Boolean, //Classifi
                 if (array[i] > array[largest]) largest = i
             }
             return largest // position of the first largest found
+        }
+
+        fun bytesToDoubleMPUAccel(a1: Byte, a2: Byte): Double {
+            val unsigned: Int = unsignedBytesToInt(a1, a2, MSBFirst)
+            return unsignedToSigned16bit(unsigned).toDouble() / 32767.0 * 16.0
+        }
+
+        fun bytesToDoubleMPUGyro(a1: Byte, a2: Byte): Double {
+            val unsigned: Int = unsignedBytesToInt(a1, a2, MSBFirst)
+            return unsignedToSigned16bit(unsigned).toDouble() / 32767.0 * 4000.0
         }
 
         private var MSBFirst: Boolean = false

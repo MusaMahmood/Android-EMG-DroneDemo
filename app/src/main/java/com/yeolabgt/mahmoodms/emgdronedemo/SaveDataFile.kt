@@ -24,7 +24,7 @@ constructor(directory: String, fileName: String, byteResolution: Int, increment:
         private set
     private var includeClass = true //Saves by default, no need to change.
     private var saveTimestamps = false
-    private var initialized = false
+    var initialized = false
     private var csvWriter: CSVWriter? = null
     lateinit var file: File
 
@@ -68,6 +68,22 @@ constructor(directory: String, fileName: String, byteResolution: Int, increment:
             writeToDiskDouble(*byteArrays)
         } else if (this.fpPrecision.toInt() == 32) {
             writeToDiskFloat(*byteArrays)
+        }
+    }
+
+    /**
+     *
+     * @param bytes split into 6 colns:
+     */
+    fun exportDataWithTimestampMPU(bytes: ByteArray?) {
+        for (i in 0 until bytes!!.size / 12) {
+            val ax = DataChannel.bytesToDoubleMPUAccel(bytes[12 * i], bytes[12 * i + 1])
+            val ay = DataChannel.bytesToDoubleMPUAccel(bytes[12 * i + 2], bytes[12 * i + 3])
+            val az = DataChannel.bytesToDoubleMPUAccel(bytes[12 * i + 4], bytes[12 * i + 5])
+            val gx = DataChannel.bytesToDoubleMPUGyro(bytes[12 * i + 6], bytes[12 * i + 7])
+            val gy = DataChannel.bytesToDoubleMPUGyro(bytes[12 * i + 8], bytes[12 * i + 9])
+            val gz = DataChannel.bytesToDoubleMPUGyro(bytes[12 * i + 10], bytes[12 * i + 11])
+            exportDataDouble(ax, ay, az, gx, gy, gz)
         }
     }
 
@@ -149,6 +165,29 @@ constructor(directory: String, fileName: String, byteResolution: Int, increment:
             csvWriter!!.writeNext(writeCSVValue[dp], false)
             this.mLinesWritten++
         }
+    }
+
+    /**
+     * Writes 6 data points + timestamp
+     * @param a accx
+     * @param b accy
+     * @param c accz
+     * @param d gyrx
+     * @param e gyry
+     * @param f gyrz
+     */
+    private fun exportDataDouble(a: Double, b: Double, c: Double, d: Double, e: Double, f: Double) {
+        val writeCSVValue = arrayOfNulls<String>(7)
+        val timestamp = mLinesWritten.toDouble() * mIncrement
+        writeCSVValue[0] = timestamp.toString() + ""
+        writeCSVValue[1] = a.toString() + ""
+        writeCSVValue[2] = b.toString() + ""
+        writeCSVValue[3] = c.toString() + ""
+        writeCSVValue[4] = d.toString() + ""
+        writeCSVValue[5] = e.toString() + ""
+        writeCSVValue[6] = f.toString() + ""
+        this.csvWriter!!.writeNext(writeCSVValue, false)
+        this.mLinesWritten++
     }
 
     @Throws(IOException::class)

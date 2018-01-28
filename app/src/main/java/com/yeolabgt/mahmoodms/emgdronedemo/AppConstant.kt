@@ -41,11 +41,15 @@ class AppConstant {
         // Characteristic to read the battery status value.
         internal val CHAR_BATTERY_LEVEL = UUID.fromString("00002a19-0000-1000-8000-00805f9b34fb")
 
+        internal val SERVICE_MPU = UUID.fromString("228ba3a0-35fd-875f-39fe-b2a394d28057");
+
+        internal val CHAR_MPU_COMBINED = UUID.fromString("0000a3a5-0000-1000-8000-00805f9b34fb")
+
         /**
          * For BLE Wheelchair Control
          */
-        internal val SERVICE_WHEELCHAIR_CONTROL = UUID.fromString("00009923-1212-efde-1523-785feabcd123")
-        internal val CHAR_WHEELCHAIR_CONTROL = UUID.fromString("00009925-1212-efde-1523-785feabcd123")
+//        internal val SERVICE_WHEELCHAIR_CONTROL = UUID.fromString("00009923-1212-efde-1523-785feabcd123")
+//        internal val CHAR_WHEELCHAIR_CONTROL = UUID.fromString("00009925-1212-efde-1523-785feabcd123")
     }
 
 }

@@ -53,7 +53,7 @@ internal class GraphAdapter
         setxAxisIncrement(1.toDouble() / sampleRate.toDouble())
     }
 
-    private fun setxAxisIncrement(xAxisIncrement: Double) {
+    fun setxAxisIncrement(xAxisIncrement: Double) {
         this.xAxisIncrement = xAxisIncrement
     }
 
