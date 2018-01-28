@@ -470,7 +470,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
         if (mSaveFileMPU == null) {
             Log.e(TAG, "fileTimeStamp: " + fileNameTimeStamped)
             mSaveFileMPU = SaveDataFile(directory, fileNameTimeStamped,
-                    16, 0.032)
+                    16, 0.020)
         } else if (!mSaveFileMPU!!.initialized) {
 //            Log.e(TAG, "New Filename: " + fileNameTimeStamped)
 //            mSaveFileMPU?.createNewFile(directory, fileNameTimeStamped)
