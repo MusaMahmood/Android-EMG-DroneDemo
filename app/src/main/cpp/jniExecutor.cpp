@@ -7,6 +7,7 @@
 #include "tf_psd_rescale_w384.h"
 #include "tf_psd_rescale_w512.h"
 #include "emg_hpf_upscale.h"
+#include "getRescaleFactor.h"
 
 /*Additional Includes*/
 #include <jni.h>
@@ -150,8 +151,7 @@ JNIEXPORT jint JNICALL
 Java_com_yeolabgt_mahmoodms_emgdronedemo_NativeInterfaceClass_jmainInitialization(
         JNIEnv *env, jobject obj, jboolean terminate) {
     if (!(bool) terminate) {
-
-//        extractPowerSpectrum_initialize();
+        emg_hpf_upscale_initialize();
         return 0;
     } else {
         return -1;

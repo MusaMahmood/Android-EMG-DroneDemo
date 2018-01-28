@@ -87,9 +87,9 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
     private val mTimerHandler = Handler()
     private var mTimerEnabled = false
     //Data Variables:
-    private val batteryWarning = 20//
+    private val batteryWarning = 20
     private var dataRate: Double = 0.toDouble()
-    private var mStimulusDelaySeconds = 0.0
+    private var mScaleFactor = 20.0
     //Play Sound:
     private lateinit var mMediaBeep: MediaPlayer
     //Tensorflow:
@@ -128,13 +128,16 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
         val intent = intent
         deviceMacAddresses = intent.getStringArrayExtra(MainActivity.INTENT_DEVICES_KEY)
         val deviceDisplayNames = intent.getStringArrayExtra(MainActivity.INTENT_DEVICES_NAMES)
-        val intentStimulusClass = intent.getStringArrayExtra(MainActivity.INTENT_DELAY_VALUE_SECONDS)
+        val stimulusSeconds = intent.getStringArrayExtra(MainActivity.INTENT_DELAY_VALUE_SECONDS)
         if (intent.extras != null)
             mRunTrainingBool = intent.extras!!.getBoolean(MainActivity.INTENT_TRAIN_BOOLEAN)
         else
             Log.e(TAG, "ERROR: intent.getExtras = null")
 
-        mStimulusDelaySeconds = Integer.valueOf(intentStimulusClass[0])!!.toDouble()
+        if (!mRunTrainingBool)
+            updateTrainingView(false)
+
+        mScaleFactor = Integer.valueOf(stimulusSeconds[0])!!.toDouble()
         mDeviceName = deviceDisplayNames[0]
         mDeviceAddress = deviceMacAddresses!![0]
         Log.d(TAG, "Device Names: " + Arrays.toString(deviceDisplayNames))
@@ -896,7 +899,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
     private fun updateTrainingRoutine(dataPoints: Int) {
         if (dataPoints % mSampleRate == 0 && mRunTrainingBool) {
             val second = dataPoints / mSampleRate
-            val mSDS = mStimulusDelaySeconds.toInt()
+            val mSDS = 10
             var eventSecondCountdown = 0
             if (second >= 0 && second < mSDS) {
                 eventSecondCountdown = mSDS - second
@@ -937,16 +940,6 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
                 updateTrainingPromptColor(Color.RED)
                 updateTrainingView(false)
                 disconnectAllBLE()
-//                if (mUseCustomParams) {
-//                    runOnUiThread { Toast.makeText(applicationContext, "Training Data Loaded", Toast.LENGTH_LONG).show() }
-//                    mRunTrainingBool = false
-//                } else {
-//                    if (TrainingData != null) {
-//                        if (TrainingData.ERROR) {
-//                            runOnUiThread { Toast.makeText(applicationContext, "TrainingData.ERROR \n Failed to Load Training Data", Toast.LENGTH_LONG).show() }
-//                        }
-//                    }
-//                }
             }
             if (eventSecondCountdown == mSDS) {
                 mMediaBeep.start()

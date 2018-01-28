@@ -87,7 +87,7 @@
 
         <com.androidplot.xy.XYPlot
             android:id="@+id/frequencyAnalysisXYPlot"
-            style="@style/APFullScreenGraph.Light"
+            style="@style/APFullScreenGraph.Light.Minimalist"
             android:layout_width="fill_parent"
             android:layout_height="fill_parent"
             ap:renderMode="use_background_thread"
