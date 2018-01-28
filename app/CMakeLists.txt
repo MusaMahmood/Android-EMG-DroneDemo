@@ -27,14 +27,11 @@ add_library( # Sets the name of the library.
               # Provides a relative path to your source file(s).
 
                 # Main C++ Data Processing Files
-                src/main/cpp/extractPowerSpectrum.cpp
-                src/main/cpp/extractPowerSpectrum_emxutil.cpp
-                src/main/cpp/classifySSVEP.cpp
-                src/main/cpp/ssvep_filter_f32.cpp
                 src/main/cpp/tf_psd_rescale_w256.cpp
                 src/main/cpp/tf_psd_rescale_w384.cpp
                 src/main/cpp/tf_psd_rescale_w512.cpp
                 src/main/cpp/emg_hpf_upscale.cpp
+                src/main/cpp/getRescaleFactor.cpp
 
                 # Executor
                 src/main/cpp/jniExecutor.cpp

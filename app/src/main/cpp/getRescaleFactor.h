@@ -2,33 +2,31 @@
 // Academic License - for use in teaching, academic research, and meeting
 // course requirements at degree granting institutions only.  Not for
 // government, commercial, or other organizational use.
-// File: classifySSVEP.h
+// File: getRescaleFactor.h
 //
 // MATLAB Coder version            : 3.3
-// C/C++ source code generated on  : 28-Sep-2017 12:01:11
+// C/C++ source code generated on  : 28-Jan-2018 16:40:23
 //
-#ifndef CLASSIFYSSVEP_H
-#define CLASSIFYSSVEP_H
+#ifndef GETRESCALEFACTOR_H
+#define GETRESCALEFACTOR_H
 
 // Include Files
-#include <cmath>
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 #include "rt_nonfinite.h"
 #include "rtwtypes.h"
-#include "classifySSVEP_types.h"
+#include "getRescaleFactor_types.h"
 
 // Function Declarations
-extern void classifySSVEP(const double X1[500], const double X2[500], double
-  thresholdFraction, double Y[2], double PSD[499]);
-extern void classifySSVEP_initialize();
-extern void classifySSVEP_terminate();
+extern double getRescaleFactor(const double X[1000], double mean_p2p);
+extern void getRescaleFactor_initialize();
+extern void getRescaleFactor_terminate();
 
 #endif
 
 //
-// File trailer for classifySSVEP.h
+// File trailer for getRescaleFactor.h
 //
 // [EOF]
 //

@@ -61,11 +61,11 @@
             android:visibility="gone" />
 
         <Button
-            android:id="@+id/resetActivityButton"
+            android:id="@+id/resetScaleButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="0.1"
-            android:text="Reset" />
+            android:text="Scale Reset" />
 
     </LinearLayout>
 

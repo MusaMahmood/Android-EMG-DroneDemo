@@ -172,9 +172,12 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             }
             mGraphAdapterCh1!!.plotData = b
         }
-        val resetButton = findViewById<Button>(R.id.resetActivityButton)
+        val resetButton = findViewById<Button>(R.id.resetScaleButton)
         resetButton.setOnClickListener {
-            finish()
+            //Feed mCh1.classificationBuffer into analysis function:
+            if (mCh1?.classificationBuffer != null) {
+
+            }
         }
         val toggleButton1 = findViewById<ToggleButton>(R.id.toggleButtonDroneControl)
         toggleButton1.setOnCheckedChangeListener { _, b ->
@@ -770,7 +773,11 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             updateBatteryStatus(batteryLevel)
         }
 
-        if (AppConstant.CHAR_EEG_CH1_SIGNAL == characteristic.uuid) {
+        /**
+         * Either Channel 1 or Channel 2 Enabled (depending on circuit config).
+         */
+        if (AppConstant.CHAR_EEG_CH1_SIGNAL == characteristic.uuid ||
+                AppConstant.CHAR_EEG_CH2_SIGNAL == characteristic.uuid) {
             val mNewEEGdataBytes = characteristic.value
             if (!mCh1!!.chEnabled) {
                 mCh1!!.chEnabled = true
@@ -786,12 +793,6 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
                     }
                 }
             }
-        }
-
-        if (AppConstant.CHAR_EEG_CH2_SIGNAL == characteristic.uuid) {
-            val mNewEEGdataBytes = characteristic.value
-            val byteLength = mNewEEGdataBytes.size
-            getDataRateBytes(byteLength)
         }
 
         if (AppConstant.CHAR_EEG_CH3_SIGNAL == characteristic.uuid) {
@@ -821,7 +822,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             val end = mCh1!!.classificationBuffer.size - 1 //E.g. if size = 500, end = 499
             val from = end - mTensorflowWindowSize
             val ch1Input = Arrays.copyOfRange(mCh1!!.classificationBuffer, from, end)
-            val rescaledInput = mNativeInterface.jfiltRescale(ch1Input, 15.0) // mTensorflowWindowSize
+            val rescaledInput = mNativeInterface.jfiltRescale(ch1Input, mScaleFactor) // mTensorflowWindowSize
             Log.i(TAG, "onCharacteristicChanged: TF_PRECALL_TIME, N#" + mNumberOfClassifierCalls.toString())
             mTFInferenceInterface?.feed("keep_prob", floatArrayOf(1f))
             mTFInferenceInterface?.feed(INPUT_DATA_FEED, rescaledInput, mTensorflowWindowSize.toLong())
@@ -849,13 +850,13 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
 
     private fun addToGraphBuffer(dataChannel: DataChannel, graphAdapter: GraphAdapter?, updateTrainingRoutine: Boolean) {
         if (mFilterData && dataChannel.totalDataPointsReceived > 1000) {
-            val filteredData = mNativeInterface.jSSVEPCfilter(dataChannel.classificationBuffer)
+//            val filteredData = mNativeInterface.jSSVEPCfilter(dataChannel.classificationBuffer)
             graphAdapter!!.clearPlot()
 
-            for (i in filteredData.indices) { // gA.addDataPointTimeDomain(y,x)
-                graphAdapter.addDataPointTimeDomainAlt(filteredData[i].toDouble(),
-                        dataChannel.totalDataPointsReceived - 999 + i)
-            }
+//            for (i in filteredData.indices) { // gA.addDataPointTimeDomain(y,x)
+//                graphAdapter.addDataPointTimeDomainAlt(filteredData[i].toDouble(),
+//                        dataChannel.totalDataPointsReceived - 999 + i)
+//            }
         } else {
             if (dataChannel.dataBuffer != null) {
                 if (mPrimarySaveDataFile!!.resolutionBits == 24) {
@@ -1225,6 +1226,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
         val HZ = "0 Hz"
         private val TAG = DeviceControlActivity::class.java.simpleName
         var mRedrawer: Redrawer? = null
+        var mScaleFactor = 20.00
         // Power Spectrum Graph Data:
         private var mSampleRate = 250
         var mEMGClass = 0.0 //TODO:
