@@ -181,13 +181,16 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             }
             mGraphAdapterCh1!!.plotData = b
         }
-        val resetButton = findViewById<Button>(R.id.resetScaleButton)
-        resetButton.setOnClickListener {
-            //Feed mCh1.classificationBuffer into analysis function:
-            if (mCh1?.classificationBuffer != null) {
-
+        resetScaleButton.setOnClickListener {
+            if (mZAccelValue < 0.70) {
+                mZAccelMaxThreshold = mZAccelValue /*current value*/ + 0.20
+                mZAccelMinThreshold = mZAccelValue - 0.20
+                val s = "Max = ${mZAccelMaxThreshold.format(2)} \n" +
+                        " Min = ${mZAccelMinThreshold.format(2)}"
+                Toast.makeText(applicationContext, s, Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(applicationContext, "No changes made! \n Check Your position", Toast.LENGTH_LONG).show()
             }
-
         }
         val toggleButton1 = findViewById<ToggleButton>(R.id.toggleButtonDroneControl)
         toggleButton1.setOnCheckedChangeListener { _, b ->
@@ -882,7 +885,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             // Pass buffer to classifier:
             mMPUClass = mNativeInterface.jclassifyPosition(mAccX!!.classificationBuffer,
                     mAccY!!.classificationBuffer, mAccZ!!.classificationBuffer,
-                    0.8, 0.4).toInt()
+                    mZAccelMaxThreshold, mZAccelMinThreshold).toInt()
         }
 
         if (mCh1!!.chEnabled) {
@@ -1333,7 +1336,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
         var mRedrawer: Redrawer? = null
         internal var mMPU: DataChannel? = null
         var mMPUClass = 0
-        var mZAccelValue = 0.0
+        var mZAccelValue = 1.0
         var mZAccelMaxThreshold = 0.8
         var mZAccelMinThreshold = 0.4
 

@@ -61,18 +61,16 @@
             android:id="@+id/droneBatteryText"
             android:layout_width="72dp"
             android:layout_height="wrap_content"
-            android:layout_column="0"
-            android:layout_row="2"
             android:layout_weight="0.1"
             android:text="DrBattery"
             android:visibility="gone" />
 
         <TextView
-            android:id="@+id/zAccelerationTextView"
+            android:id="@+id/p2pVTextView"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="0.1"
-            android:text="0.00 g" />
+            android:text="0.00V" />
 
         <Button
             android:id="@+id/resetScaleButton"
@@ -158,11 +156,11 @@
             android:text="R" />
 
         <TextView
-            android:id="@+id/p2pVTextView"
+            android:id="@+id/zAccelerationTextView"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="0.00V" />
+            android:text="0.00 g" />
 
     </LinearLayout>
 
