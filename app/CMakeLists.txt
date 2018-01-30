@@ -32,6 +32,7 @@ add_library( # Sets the name of the library.
                 src/main/cpp/tf_psd_rescale_w512.cpp
                 src/main/cpp/emg_hpf_upscale.cpp
                 src/main/cpp/getRescaleFactor.cpp
+                src/main/cpp/classifyPosition.cpp
 
                 # Executor
                 src/main/cpp/jniExecutor.cpp

@@ -8,6 +8,7 @@
 #include "tf_psd_rescale_w512.h"
 #include "emg_hpf_upscale.h"
 #include "getRescaleFactor.h"
+#include "classifyPosition.h"
 
 /*Additional Includes*/
 #include <jni.h>
@@ -78,6 +79,23 @@ static void rescale_minmax_floats(const float X[], float Y[], const int size)
     for (ixstart = 0; ixstart < size; ixstart++) {
         Y[ixstart] = (X[ixstart] - mtmp) / b_mtmp;
     }
+}
+
+extern "C" {
+JNIEXPORT jdouble JNICALL
+/**
+ *
+ * @param env
+ * @param jobject1
+ * @return array of frequencies (Hz) corresponding to a raw input signal.
+ */
+Java_com_yeolabgt_mahmoodms_emgdronedemo_NativeInterfaceClass_jclassifyPosition(
+        JNIEnv *env, jobject jobject1, jdoubleArray x, jdoubleArray y, jdoubleArray z) {
+    jdouble *X = env->GetDoubleArrayElements(x, NULL);
+    jdouble *Y = env->GetDoubleArrayElements(y, NULL);
+    jdouble *Z = env->GetDoubleArrayElements(z, NULL);
+    return classifyPosition(X, Y, Z);
+}
 }
 
 extern "C" {

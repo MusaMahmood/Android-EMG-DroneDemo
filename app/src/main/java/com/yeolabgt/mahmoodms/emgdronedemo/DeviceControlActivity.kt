@@ -322,38 +322,36 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
     }
 
     private fun sendDroneCommand(command: Int) {
-        if (mDronePresent && mDroneControl) {
+        if (mDronePresent && mDroneControl && mMiniDrone != null) {
             when (command) {
-                0 ->
-                    //Do nothing/Hover
-                    if (mMiniDrone != null) {
-                        //Reset conditions:
-                        mMiniDrone?.setYaw(0.toByte())
-                        mMiniDrone?.setPitch(0.toByte())
-                        mMiniDrone?.setFlag(0.toByte())
+                0 -> {
+                    // Do nothing/Hover //Reset conditions:
+                    mMiniDrone?.setYaw(0.toByte())
+                    mMiniDrone?.setPitch(0.toByte())
+                    mMiniDrone?.setFlag(0.toByte())
+                }
+                1 -> {
+                    // Move Fwd:
+                    mMiniDrone?.setPitch(50.toByte())
+                    mMiniDrone?.setFlag(1.toByte())
+                }
+                2 -> //RotR
+                    mMiniDrone?.setYaw(50.toByte())
+                3 -> // Take off or Land
+                    when (mMiniDrone?.flyingState) {
+                        ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_ENUM.ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_LANDED -> mMiniDrone?.takeOff()
+                        ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_ENUM.ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_FLYING,
+                        ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_ENUM.ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_HOVERING -> mMiniDrone?.land()
+                        else -> {} //Do nothing.
                     }
-                1 ->
-                    //Move Fwd:
-                    if (mMiniDrone != null) {
-                        mMiniDrone?.setPitch(50.toByte())
-                        mMiniDrone?.setFlag(1.toByte())
-                    }
-                2 ->
-                    //RotR
-                    if (mMiniDrone != null) {
-                        mMiniDrone?.setYaw(50.toByte())
-                    }
-                3 ->
-                    // Take off or Land
-                    if (mMiniDrone != null) {
-                        when (mMiniDrone?.getFlyingState()) {
-                            ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_ENUM.ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_LANDED -> mMiniDrone?.takeOff()
-                            ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_ENUM.ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_FLYING,
-                                //Do nothing.
-                            ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_ENUM.ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_HOVERING -> mMiniDrone?.land()
-                            else -> {}
-                        }
-                    }
+                4 -> { // Roll Left
+                    mMiniDrone?.setRoll((-50).toByte())
+                    mMiniDrone?.setFlag(1.toByte())
+                }
+                5 -> { // Roll Right
+                    mMiniDrone?.setRoll(50.toByte())
+                    mMiniDrone?.setFlag(1.toByte())
+                }
                 else -> {
                 }
             }
@@ -771,6 +769,9 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
                 if (AppConstant.SERVICE_MPU == service.uuid) {
                     mActBle!!.setCharacteristicNotifications(gatt, service.getCharacteristic(AppConstant.CHAR_MPU_COMBINED), true)
                     mMPU = DataChannel(false, true, 0)
+                    mAccX = DataChannel(false, true, 50)
+                    mAccY = DataChannel(false, true, 50)
+                    mAccZ = DataChannel(false, true, 50)
                     createNewFileMPU()
                 }
             }
@@ -849,14 +850,28 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
         }
 
         if (AppConstant.CHAR_MPU_COMBINED == characteristic.uuid) {
-            val dataMPU = characteristic.value
-            getDataRateBytes2(dataMPU.size) //+=240
-            mMPU!!.handleNewData(dataMPU, true)
+            val bytes = characteristic.value
+            getDataRateBytes2(bytes.size) //+=240
+            mMPU!!.handleNewData(bytes, true)
             addToGraphBufferMPU(mMPU!!)
-            mSaveFileMPU!!.exportDataWithTimestampMPU(mMPU!!.characteristicDataPacketBytes)
-//            if (mSaveFileMPU!!.mLinesWrittenCurrentFile > 1048576) {
-//                mSaveFileMPU!!.terminateDataFileWriter()
-//                createNewFileMPU()
+            for (i in 0 until bytes!!.size / 12) {
+                val ax = DataChannel.bytesToDoubleMPUAccel(bytes[12 * i], bytes[12 * i + 1])
+                val ay = DataChannel.bytesToDoubleMPUAccel(bytes[12 * i + 2], bytes[12 * i + 3])
+                val az = DataChannel.bytesToDoubleMPUAccel(bytes[12 * i + 4], bytes[12 * i + 5])
+                val gx = DataChannel.bytesToDoubleMPUGyro(bytes[12 * i + 6], bytes[12 * i + 7])
+                val gy = DataChannel.bytesToDoubleMPUGyro(bytes[12 * i + 8], bytes[12 * i + 9])
+                val gz = DataChannel.bytesToDoubleMPUGyro(bytes[12 * i + 10], bytes[12 * i + 11])
+                mSaveFileMPU?.exportDataDouble(ax, ay, az, gx, gy, gz)
+                // TODO : ADD TO BUFFER:
+                mAccX?.addToBuffer(ax)
+                mAccY?.addToBuffer(ay)
+                mAccZ?.addToBuffer(az)
+            }
+            // Pass buffer to classifier:
+            mMPUClass = mNativeInterface.jclassifyPosition(mAccX!!.classificationBuffer,
+                    mAccY!!.classificationBuffer, mAccZ!!.classificationBuffer).toInt()
+//            if (mMPUClass != 0) {
+//                sendDroneCommand()
 //            }
         }
 
@@ -893,12 +908,18 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
 
             System.arraycopy(mClassificationBuffer, 1, mClassificationBuffer, 0, 4)
             mClassificationBuffer[4] = yTF
-            val s = Arrays.toString(mClassificationBuffer)
+            val s = Arrays.toString(mClassificationBuffer) + " - MPU: [$mMPUClass]"
             runOnUiThread { mYfitTextView!!.text = s }
-            if (allValuesSame(mClassificationBuffer))
-                sendDroneCommand(yTF)
-            else
-                sendDroneCommand(0)
+            var output = 0
+            if (mMPUClass == 0) {
+                if (allValuesSame(mClassificationBuffer)) {
+                    output = yTF
+                }
+            } else {
+                output = mMPUClass
+            }
+            sendDroneCommand(output)
+            Log.e(TAG, "Drone Class Output: "+output)
             mNumberOfClassifierCalls++
         }
     }
@@ -1299,9 +1320,13 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
         private val TAG = DeviceControlActivity::class.java.simpleName
         var mRedrawer: Redrawer? = null
         internal var mMPU: DataChannel? = null
+        var mMPUClass = 0
+        internal var mAccX: DataChannel? = null
+        internal var mAccY: DataChannel? = null
+        internal var mAccZ: DataChannel? = null
         // Power Spectrum Graph Data:
         private var mSampleRate = 250
-        var mEMGClass = 0.0 //TODO:
+        var mEMGClass = 0.0
         //Data Channel Classes
         internal var mFilterData = false
         private var mPacketBuffer = 6

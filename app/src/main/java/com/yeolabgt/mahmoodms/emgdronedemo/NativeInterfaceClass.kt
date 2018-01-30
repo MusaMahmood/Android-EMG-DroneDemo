@@ -12,6 +12,8 @@ class NativeInterfaceClass {
     external fun jmainInitialization(b: Boolean): Int
     @Throws(IllegalArgumentException::class)
     external fun jfiltRescale(data: DoubleArray, scaleFactor: Double): FloatArray
+    @Throws(IllegalArgumentException::class)
+    external fun jclassifyPosition(x: DoubleArray, y: DoubleArray, z: DoubleArray): Double
 
     companion object {
         init {

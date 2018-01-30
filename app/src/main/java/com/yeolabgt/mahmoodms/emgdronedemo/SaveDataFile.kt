@@ -176,7 +176,7 @@ constructor(directory: String, fileName: String, byteResolution: Int, increment:
      * @param e gyry
      * @param f gyrz
      */
-    private fun exportDataDouble(a: Double, b: Double, c: Double, d: Double, e: Double, f: Double) {
+    fun exportDataDouble(a: Double, b: Double, c: Double, d: Double, e: Double, f: Double) {
         val writeCSVValue = arrayOfNulls<String>(7)
         val timestamp = mLinesWritten.toDouble() * mIncrement
         writeCSVValue[0] = timestamp.toString() + ""
