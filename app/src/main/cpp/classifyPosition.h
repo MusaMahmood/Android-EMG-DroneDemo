@@ -17,8 +17,8 @@
 #include "classifyPosition_types.h"
 
 // Function Declarations
-extern double classifyPosition(const double x[50], const double y[50], const
-  double z[50]);
+extern double classifyPosition(const double [50], const double [50], const double z[50],
+                               double max_threshold, double min_threshold);
 extern void classifyPosition_initialize();
 extern void classifyPosition_terminate();
 

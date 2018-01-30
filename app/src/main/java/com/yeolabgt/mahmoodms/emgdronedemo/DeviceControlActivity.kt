@@ -866,13 +866,15 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
                 mAccX?.addToBuffer(ax)
                 mAccY?.addToBuffer(ay)
                 mAccZ?.addToBuffer(az)
+                val zAccStr = "${az.format(2)} g"
+                runOnUiThread {
+                    zAccelerationTextView.text = zAccStr
+                }
             }
             // Pass buffer to classifier:
             mMPUClass = mNativeInterface.jclassifyPosition(mAccX!!.classificationBuffer,
-                    mAccY!!.classificationBuffer, mAccZ!!.classificationBuffer).toInt()
-//            if (mMPUClass != 0) {
-//                sendDroneCommand()
-//            }
+                    mAccY!!.classificationBuffer, mAccZ!!.classificationBuffer,
+                    0.8, 0.4).toInt()
         }
 
         if (mCh1!!.chEnabled) {

@@ -21,14 +21,15 @@
 //                const double z[50]
 // Return Type  : double
 //
-double classifyPosition(const double [50], const double [50], const double z[50])
+double classifyPosition(const double [50], const double [50], const double z[50],
+                        double max_threshold, double min_threshold)
 {
   double C;
   int i;
   double b_y;
   boolean_T b_x[50];
   for (i = 0; i < 50; i++) {
-    b_x[i] = (z[i] > 0.80);
+    b_x[i] = (z[i] > max_threshold/*0.80*/);
   }
 
   b_y = b_x[0];
@@ -36,11 +37,11 @@ double classifyPosition(const double [50], const double [50], const double z[50]
     b_y += (double)b_x[i + 1];
   }
 
-  if (b_y == 50.0) {
+  if (b_y >= 26.0) {
     C = 4.0;
   } else {
     for (i = 0; i < 50; i++) {
-      b_x[i] = (z[i] < 0.45);
+      b_x[i] = (z[i] < min_threshold/*0.40*/);
     }
 
     b_y = b_x[0];
@@ -48,7 +49,7 @@ double classifyPosition(const double [50], const double [50], const double z[50]
       b_y += (double)b_x[i + 1];
     }
 
-    if (b_y == 50.0) {
+    if (b_y >= 26.0) {
       C = 5.0;
     } else {
       C = 0.0;

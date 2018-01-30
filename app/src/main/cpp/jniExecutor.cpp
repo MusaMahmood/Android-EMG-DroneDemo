@@ -90,11 +90,27 @@ JNIEXPORT jdouble JNICALL
  * @return array of frequencies (Hz) corresponding to a raw input signal.
  */
 Java_com_yeolabgt_mahmoodms_emgdronedemo_NativeInterfaceClass_jclassifyPosition(
-        JNIEnv *env, jobject jobject1, jdoubleArray x, jdoubleArray y, jdoubleArray z) {
+        JNIEnv *env, jobject jobject1, jdoubleArray x, jdoubleArray y, jdoubleArray z,
+        jdouble max_threshold, jdouble min_threshold) {
     jdouble *X = env->GetDoubleArrayElements(x, NULL);
     jdouble *Y = env->GetDoubleArrayElements(y, NULL);
     jdouble *Z = env->GetDoubleArrayElements(z, NULL);
-    return classifyPosition(X, Y, Z);
+    return classifyPosition(X, Y, Z, max_threshold, min_threshold);
+}
+}
+
+extern "C" {
+JNIEXPORT jdouble JNICALL
+/**
+ *
+ * @param env
+ * @param jobject1
+ * @return array of frequencies (Hz) corresponding to a raw input signal.
+ */
+Java_com_yeolabgt_mahmoodms_emgdronedemo_NativeInterfaceClass_jgetPeak2PeakVoltage(
+        JNIEnv *env, jobject jobject1, jdoubleArray x) {
+    jdouble *X = env->GetDoubleArrayElements(x, NULL);
+    return getPeak2PeakVoltage(X);
 }
 }
 
