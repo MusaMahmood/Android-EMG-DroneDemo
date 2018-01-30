@@ -67,6 +67,13 @@
             android:text="DrBattery"
             android:visibility="gone" />
 
+        <TextView
+            android:id="@+id/zAccelerationTextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="0.1"
+            android:text="0.00 g" />
+
         <Button
             android:id="@+id/resetScaleButton"
             android:layout_width="wrap_content"
@@ -149,13 +156,6 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="R" />
-
-        <TextView
-            android:id="@+id/zAccelerationTextView"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="0.00 g" />
 
         <TextView
             android:id="@+id/p2pVTextView"

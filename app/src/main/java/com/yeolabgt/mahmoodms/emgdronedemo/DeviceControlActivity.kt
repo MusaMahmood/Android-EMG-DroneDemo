@@ -187,6 +187,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             if (mCh1?.classificationBuffer != null) {
 
             }
+
         }
         val toggleButton1 = findViewById<ToggleButton>(R.id.toggleButtonDroneControl)
         toggleButton1.setOnCheckedChangeListener { _, b ->
@@ -864,16 +865,16 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             for (i in 0 until bytes!!.size / 12) {
                 val ax = DataChannel.bytesToDoubleMPUAccel(bytes[12 * i], bytes[12 * i + 1])
                 val ay = DataChannel.bytesToDoubleMPUAccel(bytes[12 * i + 2], bytes[12 * i + 3])
-                val az = DataChannel.bytesToDoubleMPUAccel(bytes[12 * i + 4], bytes[12 * i + 5])
+                mZAccelValue = DataChannel.bytesToDoubleMPUAccel(bytes[12 * i + 4], bytes[12 * i + 5])
                 val gx = DataChannel.bytesToDoubleMPUGyro(bytes[12 * i + 6], bytes[12 * i + 7])
                 val gy = DataChannel.bytesToDoubleMPUGyro(bytes[12 * i + 8], bytes[12 * i + 9])
                 val gz = DataChannel.bytesToDoubleMPUGyro(bytes[12 * i + 10], bytes[12 * i + 11])
-                mSaveFileMPU?.exportDataDouble(ax, ay, az, gx, gy, gz)
+                mSaveFileMPU?.exportDataDouble(ax, ay, mZAccelValue, gx, gy, gz)
                 // TODO : ADD TO BUFFER:
                 mAccX?.addToBuffer(ax)
                 mAccY?.addToBuffer(ay)
-                mAccZ?.addToBuffer(az)
-                val zAccStr = "${az.format(2)} g"
+                mAccZ?.addToBuffer(mZAccelValue)
+                val zAccStr = "${mZAccelValue.format(2)} g"
                 runOnUiThread {
                     zAccelerationTextView.text = zAccStr
                 }
@@ -1332,6 +1333,10 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
         var mRedrawer: Redrawer? = null
         internal var mMPU: DataChannel? = null
         var mMPUClass = 0
+        var mZAccelValue = 0.0
+        var mZAccelMaxThreshold = 0.8
+        var mZAccelMinThreshold = 0.4
+
         internal var mAccX: DataChannel? = null
         internal var mAccY: DataChannel? = null
         internal var mAccZ: DataChannel? = null
