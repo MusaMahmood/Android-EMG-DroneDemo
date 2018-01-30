@@ -202,6 +202,45 @@ double getRescaleFactor(const double X[1000], double mean_p2p)
   return SF;
 }
 
+double getPeak2PeakVoltage(const double X[1000]) {
+  double X_f[1000];
+  int ixstart;
+  double p2p;
+  int ix;
+  boolean_T exitg1;
+
+  //  Y = [0, 0, 0];
+  filtfilt(X, X_f);
+  ixstart = 1;
+  p2p = X_f[0];
+  if (rtIsNaN(X_f[0])) {
+    ix = 2;
+    exitg1 = false;
+    while ((!exitg1) && (ix < 1001)) {
+      ixstart = ix;
+      if (!rtIsNaN(X_f[ix - 1])) {
+        p2p = X_f[ix - 1];
+        exitg1 = true;
+      } else {
+        ix++;
+      }
+    }
+  }
+
+  if (ixstart < 1000) {
+    while (ixstart + 1 < 1001) {
+      if (X_f[ixstart] > p2p) {
+        p2p = X_f[ixstart];
+      }
+
+      ixstart++;
+    }
+  }
+
+  //      Y = [m_min, m_max, p2p];
+  return p2p;
+}
+
 //
 // Arguments    : void
 // Return Type  : void

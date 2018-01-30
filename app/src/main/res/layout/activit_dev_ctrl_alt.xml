@@ -42,6 +42,13 @@
             android:text="DataRate" />
 
         <TextView
+            android:id="@+id/emgClassText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="0.1"
+            android:text="ct" />
+
+        <TextView
             android:id="@+id/batteryText"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -144,11 +151,18 @@
             android:text="R" />
 
         <TextView
-            android:id="@+id/emgClassText"
+            android:id="@+id/zAccelerationTextView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="0.00 g" />
+
+        <TextView
+            android:id="@+id/p2pVTextView"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="ct" />
+            android:text="0.00V" />
 
     </LinearLayout>
 

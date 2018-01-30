@@ -20,6 +20,7 @@
 
 // Function Declarations
 extern double getRescaleFactor(const double X[1000], double mean_p2p);
+extern double getPeak2PeakVoltage(const double X[1000]);
 extern void getRescaleFactor_initialize();
 extern void getRescaleFactor_terminate();
 

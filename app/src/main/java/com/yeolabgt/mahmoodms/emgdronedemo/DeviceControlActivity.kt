@@ -36,6 +36,7 @@ import com.parrot.arsdk.arcontroller.ARFrame
 import com.parrot.arsdk.ardiscovery.ARDiscoveryDeviceService
 import com.yeolabgt.mahmoodms.actblelibrary.ActBle
 import com.yeolabgt.mahmoodms.emgdronedemo.ParrotDrone.MiniDrone
+import kotlinx.android.synthetic.main.activit_dev_ctrl_alt.*
 import org.tensorflow.contrib.android.TensorFlowInferenceInterface
 import java.io.File
 
@@ -141,8 +142,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
         else
             Log.e(TAG, "ERROR: intent.getExtras = null")
 
-        if (!mRunTrainingBool)
-            updateTrainingView(false)
+        updateTrainingView(mRunTrainingBool)
 
         mScaleFactor = Integer.valueOf(stimulusSeconds[0])!!.toDouble()
         mDeviceName = deviceDisplayNames[0]
@@ -234,7 +234,8 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             when (mMiniDrone?.flyingState) {
                 ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_ENUM.ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_LANDED -> mMiniDrone?.takeOff()
                 ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_ENUM.ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_FLYING, ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_ENUM.ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_HOVERING -> mMiniDrone?.land()
-                else -> {/*Do Nothing*/}
+                else -> {/*Do Nothing*/
+                }
             }
         })
         mConnectDroneButton?.setOnClickListener(View.OnClickListener {
@@ -260,8 +261,8 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
     private fun initializeTensorflowInterface() {
         val customModelPath = Environment.getExternalStorageDirectory().absolutePath + "/Download/tensorflow_assets/"
         mTensorflowWindowSize = 128
-        val modelPath = customModelPath + "opt_emg_2cnn_1ch_wlen"+mTensorflowWindowSize.toString()+".pb"
-        Log.d(TAG, "customModel Wlen128: exists? "+File(modelPath).exists().toString())
+        val modelPath = customModelPath + "opt_emg_2cnn_1ch_wlen" + mTensorflowWindowSize.toString() + ".pb"
+        Log.d(TAG, "customModel Wlen128: exists? " + File(modelPath).exists().toString())
         when {
             File(modelPath).exists() -> {
                 mTFInferenceInterface = TensorFlowInferenceInterface(assets, modelPath)
@@ -342,7 +343,8 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
                         ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_ENUM.ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_LANDED -> mMiniDrone?.takeOff()
                         ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_ENUM.ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_FLYING,
                         ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_ENUM.ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_HOVERING -> mMiniDrone?.land()
-                        else -> {} //Do nothing.
+                        else -> {
+                        } //Do nothing.
                     }
                 4 -> { // Roll Left
                     mMiniDrone?.setRoll((-50).toByte())
@@ -369,7 +371,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
         val context = applicationContext
         val uii = FileProvider.getUriForFile(context, context.packageName + ".provider", mPrimarySaveDataFile!!.file)
         files.add(uii)
-        if(mSaveFileMPU!=null) {
+        if (mSaveFileMPU != null) {
             val uii2 = FileProvider.getUriForFile(context, context.packageName + ".provider", mSaveFileMPU!!.file)
             files.add(uii2)
         }
@@ -842,8 +844,15 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
                 if (mCh1!!.packetCounter.toInt() == mPacketBuffer) {
                     addToGraphBuffer(mCh1!!, mGraphAdapterCh1, true)
                     //TODO: Update Training Routine
-                    if (mNumberPackets % 8 == 0) {
+                    if (mNumberPackets % 10 == 0) {
                         classifyEMG()
+                    }
+                    if (mNumberPackets % 20 == 0) { //every ~0.48 seconds
+                        val p2p = mNativeInterface.jgetPeak2PeakVoltage(mCh1!!.classificationBuffer)
+                        val s = " - Vp2p: ${(p2p*1000.0).format(2)} mV"
+                        runOnUiThread {
+                            p2pVTextView.text = s
+                        }
                     }
                 }
             }
@@ -885,12 +894,9 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
                 mPrimarySaveDataFile!!.writeToDisk(mCh1?.characteristicDataPacketBytes)
             }
         }
-
-        runOnUiThread {
-            val concat = "C:[$mEMGClass]"
-            mEMGClassText?.text = concat
-        }
     }
+
+    fun Double.format(digits: Int) = java.lang.String.format("%.${digits}f", this)
 
     private fun classifyEMG() {
         if (mTFRunModel) {
@@ -910,8 +916,6 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
 
             System.arraycopy(mClassificationBuffer, 1, mClassificationBuffer, 0, 4)
             mClassificationBuffer[4] = yTF
-            val s = Arrays.toString(mClassificationBuffer) + " - MPU: [$mMPUClass]"
-            runOnUiThread { mYfitTextView!!.text = s }
             var output = 0
             if (mMPUClass == 0) {
                 if (allValuesSame(mClassificationBuffer)) {
@@ -921,8 +925,14 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
                 output = mMPUClass
             }
             sendDroneCommand(output)
-            Log.e(TAG, "Drone Class Output: "+output)
+            Log.e(TAG, "Drone Class Output: " + output)
             mNumberOfClassifierCalls++
+            val s = Arrays.toString(mClassificationBuffer) + " - MPU: [$mMPUClass]"
+            val outputStr = "Output: [" + output + "]"
+            runOnUiThread {
+                mYfitTextView!!.text = s
+                mEMGClassText?.text = outputStr
+            }
         }
     }
 
@@ -931,7 +941,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
     }
 
     private fun addToGraphBufferMPU(dataChannel: DataChannel) {
-        if (dataChannel.dataBuffer!=null) {
+        if (dataChannel.dataBuffer != null) {
             for (i in 0 until dataChannel.dataBuffer!!.size / 12) {
                 mGraphAdapterMotionAX?.addDataPointTimeDomain(DataChannel.bytesToDoubleMPUAccel(dataChannel.dataBuffer!![12 * i], dataChannel.dataBuffer!![12 * i + 1]), mTimestampIdxMPU)
                 mGraphAdapterMotionAY?.addDataPointTimeDomain(DataChannel.bytesToDoubleMPUAccel(dataChannel.dataBuffer!![12 * i + 2], dataChannel.dataBuffer!![12 * i + 3]), mTimestampIdxMPU)
@@ -1050,7 +1060,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
         val visibility = if (b) View.VISIBLE else View.GONE
         runOnUiThread {
             mTrainingInstructions?.visibility = visibility
-            mEMGClassText?.visibility = visibility
+//            mEMGClassText?.visibility = visibility
         }
     }
 
@@ -1297,7 +1307,8 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
                 mDownloadProgressDialog?.setProgress(0)
                 mDownloadProgressDialog?.setCancelable(false)
                 mDownloadProgressDialog?.setButton(DialogInterface.BUTTON_NEGATIVE, "Cancel", DialogInterface.OnClickListener { _, _ ->
-                    mMiniDrone?.cancelGetLastFlightMedias() })
+                    mMiniDrone?.cancelGetLastFlightMedias()
+                })
                 mDownloadProgressDialog?.show()
             }
         }
