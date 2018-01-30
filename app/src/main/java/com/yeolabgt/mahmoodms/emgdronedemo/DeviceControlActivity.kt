@@ -141,9 +141,6 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             mRunTrainingBool = intent.extras!!.getBoolean(MainActivity.INTENT_TRAIN_BOOLEAN)
         else
             Log.e(TAG, "ERROR: intent.getExtras = null")
-
-        updateTrainingView(mRunTrainingBool)
-
         mScaleFactor = Integer.valueOf(stimulusSeconds[0])!!.toDouble()
         mDeviceName = deviceDisplayNames[0]
         mDeviceAddress = deviceMacAddresses!![0]
@@ -176,6 +173,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
         mMediaBeep = MediaPlayer.create(this, R.raw.beep_01a)
         mLastTime = System.currentTimeMillis()
         mLastTime2 = System.currentTimeMillis()
+        updateTrainingView(mRunTrainingBool)
         mTogglePlots = findViewById(R.id.toggleButtonCh1)
         mTogglePlots!!.setOnCheckedChangeListener { _, b ->
             if (!b) {
