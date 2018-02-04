@@ -182,11 +182,11 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             mGraphAdapterCh1!!.plotData = b
         }
         resetScaleButton.setOnClickListener {
-            if (mZAccelValue < 0.70) {
-                mZAccelMaxThreshold = mZAccelValue /*current value*/ + 0.20
-                mZAccelMinThreshold = mZAccelValue - 0.20
-                val s = "Max = ${mZAccelMaxThreshold.format(2)} \n" +
-                        " Min = ${mZAccelMinThreshold.format(2)}"
+            if (mZAccValue < 0.70) {
+                mZAccMaxThreshold = mZAccValue /*current value*/ + 0.20
+                mZAccMinThreshold = mZAccValue - 0.20
+                val s = "Max = ${mZAccMaxThreshold.format(2)} \n" +
+                        " Min = ${mZAccMinThreshold.format(2)}"
                 Toast.makeText(applicationContext, s, Toast.LENGTH_SHORT).show()
             } else {
                 Toast.makeText(applicationContext, "No changes made! \n Check Your position", Toast.LENGTH_LONG).show()
@@ -851,7 +851,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
                     }
                     if (mNumberPackets % 20 == 0) { //every ~0.48 seconds
                         val p2p = mNativeInterface.jgetPeak2PeakVoltage(mCh1!!.classificationBuffer)
-                        val s = " - Vp2p: ${(p2p*1000.0).format(2)} mV"
+                        val s = " - Vp2p: ${(p2p * 1000.0).format(2)} mV"
                         runOnUiThread {
                             p2pVTextView.text = s
                         }
@@ -868,16 +868,16 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             for (i in 0 until bytes!!.size / 12) {
                 val ax = DataChannel.bytesToDoubleMPUAccel(bytes[12 * i], bytes[12 * i + 1])
                 val ay = DataChannel.bytesToDoubleMPUAccel(bytes[12 * i + 2], bytes[12 * i + 3])
-                mZAccelValue = DataChannel.bytesToDoubleMPUAccel(bytes[12 * i + 4], bytes[12 * i + 5])
+                mZAccValue = DataChannel.bytesToDoubleMPUAccel(bytes[12 * i + 4], bytes[12 * i + 5])
                 val gx = DataChannel.bytesToDoubleMPUGyro(bytes[12 * i + 6], bytes[12 * i + 7])
                 val gy = DataChannel.bytesToDoubleMPUGyro(bytes[12 * i + 8], bytes[12 * i + 9])
                 val gz = DataChannel.bytesToDoubleMPUGyro(bytes[12 * i + 10], bytes[12 * i + 11])
-                mSaveFileMPU?.exportDataDouble(ax, ay, mZAccelValue, gx, gy, gz)
+                mSaveFileMPU?.exportDataDouble(ax, ay, mZAccValue, gx, gy, gz)
                 // TODO : ADD TO BUFFER:
                 mAccX?.addToBuffer(ax)
                 mAccY?.addToBuffer(ay)
-                mAccZ?.addToBuffer(mZAccelValue)
-                val zAccStr = "${mZAccelValue.format(2)} g"
+                mAccZ?.addToBuffer(mZAccValue)
+                val zAccStr = "${mZAccValue.format(2)} g"
                 runOnUiThread {
                     zAccelerationTextView.text = zAccStr
                 }
@@ -885,7 +885,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             // Pass buffer to classifier:
             mMPUClass = mNativeInterface.jclassifyPosition(mAccX!!.classificationBuffer,
                     mAccY!!.classificationBuffer, mAccZ!!.classificationBuffer,
-                    mZAccelMaxThreshold, mZAccelMinThreshold).toInt()
+                    mZAccMaxThreshold, mZAccMinThreshold).toInt()
         }
 
         if (mCh1!!.chEnabled) {
@@ -1336,10 +1336,9 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
         var mRedrawer: Redrawer? = null
         internal var mMPU: DataChannel? = null
         var mMPUClass = 0
-        var mZAccelValue = 1.0
-        var mZAccelMaxThreshold = 0.8
-        var mZAccelMinThreshold = 0.4
-
+        var mZAccValue = 1.0
+        var mZAccMaxThreshold = 0.8
+        var mZAccMinThreshold = 0.4
         internal var mAccX: DataChannel? = null
         internal var mAccY: DataChannel? = null
         internal var mAccZ: DataChannel? = null
