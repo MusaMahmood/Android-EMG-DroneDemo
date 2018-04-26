@@ -48,8 +48,8 @@ class AppConstant {
         /**
          * For BLE Wheelchair Control
          */
-//        internal val SERVICE_WHEELCHAIR_CONTROL = UUID.fromString("00009923-1212-efde-1523-785feabcd123")
-//        internal val CHAR_WHEELCHAIR_CONTROL = UUID.fromString("00009925-1212-efde-1523-785feabcd123")
+        internal val SERVICE_WHEELCHAIR_CONTROL = UUID.fromString("00009923-1212-efde-1523-785feabcd123")
+        internal val CHAR_WHEELCHAIR_CONTROL = UUID.fromString("00009925-1212-efde-1523-785feabcd123")
     }
 
 }

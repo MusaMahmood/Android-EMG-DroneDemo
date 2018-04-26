@@ -64,6 +64,9 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
     //Device Information
     private var mBleInitializedBoolean = false
     private lateinit var mBluetoothGattArray: Array<BluetoothGatt?>
+    private var mLedWheelchairControlService: BluetoothGattService? = null
+    //Classification
+    private var mWheelchairControl = true //Default classifier.
     private var mActBle: ActBle? = null
     private var mDeviceName: String? = null
     private var mDeviceAddress: String? = null
@@ -180,6 +183,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
                 mGraphAdapterCh1?.clearPlot()
             }
             mGraphAdapterCh1!!.plotData = b
+            mWheelchairControl = b
         }
         resetScaleButton.setOnClickListener {
             if (mZAccValue < 0.70) {
@@ -203,11 +207,13 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
                     v.isPressed = true
                     mMiniDrone?.setPitch(50.toByte())
                     mMiniDrone?.setFlag(1.toByte())
+                    executeWheelchairCommand(1)
                 }
 
                 MotionEvent.ACTION_UP -> {
                     mMiniDrone?.setPitch(0.toByte())
                     mMiniDrone?.setFlag(0.toByte())
+                    executeWheelchairCommand(0)
                 }
                 else -> {
                 }
@@ -219,11 +225,13 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
                 MotionEvent.ACTION_DOWN -> {
                     v.isPressed = true
                     mMiniDrone?.setYaw(50.toByte())
+                    executeWheelchairCommand(3)
                 }
 
                 MotionEvent.ACTION_UP -> {
                     v.isPressed = false
                     mMiniDrone?.setYaw(0.toByte())
+                    executeWheelchairCommand(0)
                 }
 
                 else -> {
@@ -321,6 +329,24 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
         } else {
             Log.e(TAG, "Drone Service is Null")
             return false
+        }
+    }
+
+    private fun executeWheelchairCommand(command: Int) {
+        val bytes = ByteArray(1)
+        when (command) {
+            0 -> bytes[0] = 0x00.toByte()
+            1 -> bytes[0] = 0x01.toByte() // Stop
+            2 -> bytes[0] = 0xF0.toByte() // Rotate Left
+            3 -> bytes[0] = 0x0F.toByte() // Rotate Right ??
+            4 -> bytes[0] = 0xFF.toByte() // TODO: 6/27/2017 Disconnect instead of reverse?
+            else -> {
+            }
+        }
+        if (mLedWheelchairControlService != null && mWheelchairControl) {
+            Log.e(TAG, "SendingCommand: " + command.toString())
+            Log.e(TAG, "SendingCommand (byte): " + DataChannel.byteArrayToHexString(bytes))
+            mActBle!!.writeCharacteristic(mBluetoothGattArray[mWheelchairGattIndex]!!, mLedWheelchairControlService!!.getCharacteristic(AppConstant.CHAR_WHEELCHAIR_CONTROL), bytes)
         }
     }
 
@@ -723,6 +749,12 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
                 if (service == null || service.uuid == null) {
                     continue
                 }
+
+                if (AppConstant.SERVICE_WHEELCHAIR_CONTROL == service.uuid) {
+                    mLedWheelchairControlService = service
+                    Log.i(TAG, "BLE Wheelchair Control Service found")
+                }
+
                 if (AppConstant.SERVICE_DEVICE_INFO == service.uuid) {
                     //Read the device serial number (if available)
                     if (service.getCharacteristic(AppConstant.CHAR_SERIAL_NUMBER) != null) {
@@ -927,6 +959,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
                 output = mMPUClass
             }
             sendDroneCommand(output)
+            executeWheelchairCommand(output)
             Log.e(TAG, "Drone Class Output: " + output)
             mNumberOfClassifierCalls++
             val s = Arrays.toString(mClassificationBuffer) + " - MPU: [$mMPUClass]"
