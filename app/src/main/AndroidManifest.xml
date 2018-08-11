@@ -36,6 +36,8 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <activity android:name=".connectors.bluetooth.BluetoothConnector"
+            android:screenOrientation="portrait" />
         <activity android:name="com.yeolabgt.mahmoodms.emgdronedemo.DeviceControlActivity"
             android:hardwareAccelerated="false"
             android:label="ECG Sensor Data"
@@ -43,12 +45,6 @@
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value="com.yeolabgt.mahmoodms.emgdronedemo.MainActivity" />
-        </activity>
-        <activity android:name="com.yeolabgt.mahmoodms.emgdronedemo.SettingsActivity"
-            android:label="Settings">
-            <meta-data
-                android:name="android.support.PARENT_ACTIVITY"
-                android:value="com.yeolabgt.mahmoodms.emgdronedemo.DeviceControlActivity" />
         </activity>
     </application>
 </manifest>

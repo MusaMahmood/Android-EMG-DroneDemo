@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/presenter"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    tools:context="com.yeolabgt.mahmoodms.emgdronedemo.Presenter">
+
+    <Button
+        android:id="@+id/start_pres_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Start Presentation" />
+
+    <Button
+        android:id="@+id/end_pres_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Button" />
+
+    <Button
+        android:id="@+id/next_slide"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/next_slide" />
+
+    <Button
+        android:id="@+id/prev_slide"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/prev_slide" />
+</LinearLayout>

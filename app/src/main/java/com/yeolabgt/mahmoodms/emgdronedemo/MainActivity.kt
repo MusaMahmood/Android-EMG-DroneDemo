@@ -30,6 +30,8 @@ import android.widget.Toast
 import com.parrot.arsdk.ARSDK
 import com.parrot.arsdk.ardiscovery.ARDiscoveryDeviceService
 import com.yeolabgt.mahmoodms.emgdronedemo.ParrotDrone.DroneDiscoverer
+import com.yeolabgt.mahmoodms.emgdronedemo.connectors.bluetooth.BluetoothConnector
+import kotlinx.android.synthetic.main.activity_device_scan.*
 
 import java.util.ArrayList
 
@@ -165,6 +167,10 @@ class MainActivity : Activity() {
                     Toast.makeText(this@MainActivity, "No Devices Selected!", Toast.LENGTH_SHORT).show()
                 }
             }
+        }
+        connectPresenterBT.setOnClickListener {
+            val intent = Intent(this@MainActivity, BluetoothConnector::class.java)
+            startActivity(intent)
         }
         //Drone Stuff:
         mDroneDiscoverer = DroneDiscoverer(this)

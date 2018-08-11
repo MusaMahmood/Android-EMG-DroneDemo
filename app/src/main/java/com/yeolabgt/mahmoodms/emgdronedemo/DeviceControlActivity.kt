@@ -3,9 +3,7 @@ package com.yeolabgt.mahmoodms.emgdronedemo
 import android.app.Activity
 import android.app.ProgressDialog
 import android.bluetooth.*
-import android.content.Context
-import android.content.DialogInterface
-import android.content.Intent
+import android.content.*
 import android.content.pm.ActivityInfo
 import android.graphics.Color
 import android.graphics.Typeface
@@ -34,6 +32,7 @@ import com.parrot.arsdk.ardiscovery.ARDiscoveryDeviceService
 import com.yeolabgt.mahmoodms.actblelibrary.ActBle
 import com.yeolabgt.mahmoodms.emgdronedemo.ParrotDrone.JSDrone
 import com.yeolabgt.mahmoodms.emgdronedemo.ParrotDrone.MiniDrone
+import com.yeolabgt.mahmoodms.emgdronedemo.connectors.bluetooth.BluetoothPresenterControl
 import kotlinx.android.synthetic.main.activit_dev_ctrl_alt.*
 import org.tensorflow.contrib.android.TensorFlowInferenceInterface
 import java.io.File
@@ -131,6 +130,48 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
     }
 
     private var mAudioState = AudioState.MUTE
+
+    // TODO: Presenter Stuff:
+    /**
+     * Local Bluetooth adapter.
+     */
+    private var mBluetoothAdapter: BluetoothAdapter? = null
+
+    /**
+     * Member object for the presenter control service.
+     */
+    private var mPresenterControl: BluetoothPresenterControl? = null
+
+    /**
+     * Stores if the presenter fragment is visible or not.
+     */
+    private var mPresenterVisible = false
+
+    /**
+     * Stores if the current visibility state of the bluetooth connector.
+     */
+    private var mBluetoothConnectorVisible = false
+
+    /**
+     * The settings instance
+     */
+    private var mSettings: Settings? = null
+
+    /**
+     * The BroadcastReceiver that listens for bluetooth broadcasts
+     */
+    internal var mReceiver: BroadcastReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            val action = intent.action
+
+            if (BluetoothAdapter.ACTION_STATE_CHANGED == action && intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR) == BluetoothAdapter.STATE_OFF) {
+                //Device has disconnected
+                Toast.makeText(this@DeviceControlActivity, "Bluetooth is required!", Toast.LENGTH_LONG).show()
+                this@DeviceControlActivity.finish()
+            }
+        }
+    }
+
 
     private val timeStamp: String
         get() = SimpleDateFormat("yyyy.MM.dd_HH.mm.ss", Locale.US).format(Date())
