@@ -28,6 +28,7 @@ import android.view.*
 import android.widget.*
 
 import com.androidplot.util.Redrawer
+import com.parrot.arsdk.arcommands.ARCOMMANDS_JUMPINGSUMO_MEDIARECORDEVENT_PICTUREEVENTCHANGED_ERROR_ENUM
 import com.parrot.arsdk.arcommands.ARCOMMANDS_MINIDRONE_MEDIARECORDEVENT_PICTUREEVENTCHANGED_ERROR_ENUM
 import com.parrot.arsdk.arcommands.ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_ENUM
 import com.parrot.arsdk.arcontroller.ARCONTROLLER_DEVICE_STATE_ENUM
@@ -35,6 +36,7 @@ import com.parrot.arsdk.arcontroller.ARControllerCodec
 import com.parrot.arsdk.arcontroller.ARFrame
 import com.parrot.arsdk.ardiscovery.ARDiscoveryDeviceService
 import com.yeolabgt.mahmoodms.actblelibrary.ActBle
+import com.yeolabgt.mahmoodms.emgdronedemo.ParrotDrone.JSDrone
 import com.yeolabgt.mahmoodms.emgdronedemo.ParrotDrone.MiniDrone
 import kotlinx.android.synthetic.main.activit_dev_ctrl_alt.*
 import org.tensorflow.contrib.android.TensorFlowInferenceInterface
@@ -122,6 +124,18 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
     private var mNbMaxDownload: Int = 0
     private var mCurrentDownloadIndex: Int = 0
     private var mARService: ARDiscoveryDeviceService? = null
+    // Jumping Sumo Drone:
+    private var mJSDrone: JSDrone? = null
+    private val mJSDroneSpeedLR: Int = 20
+    private val mJSDroneSpeedFWREV: Int = 20
+
+    private enum class AudioState {
+        MUTE,
+        INPUT,
+        BIDIRECTIONAL
+    }
+
+    private var mAudioState = AudioState.MUTE
 
     private val timeStamp: String
         get() = SimpleDateFormat("yyyy.MM.dd_HH.mm.ss", Locale.US).format(Date())
@@ -205,14 +219,14 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
                     v.isPressed = true
-                    mMiniDrone?.setPitch(50.toByte())
-                    mMiniDrone?.setFlag(1.toByte())
+                    sendDroneCommand(1)
                     executeWheelchairCommand(1)
                 }
 
                 MotionEvent.ACTION_UP -> {
                     mMiniDrone?.setPitch(0.toByte())
                     mMiniDrone?.setFlag(0.toByte())
+                    sendDroneCommand(0)
                     executeWheelchairCommand(0)
                 }
                 else -> {
@@ -224,27 +238,45 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
                     v.isPressed = true
-                    mMiniDrone?.setYaw(50.toByte())
+//                    mMiniDrone?.setYaw(50.toByte())
+                    sendDroneCommand(2)
                     executeWheelchairCommand(3)
                 }
 
                 MotionEvent.ACTION_UP -> {
                     v.isPressed = false
                     mMiniDrone?.setYaw(0.toByte())
+                    sendDroneCommand(0)
                     executeWheelchairCommand(0)
                 }
-
                 else -> {
                 }
             }
+            true
+        }
+        buttonL.setOnTouchListener { v, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    v.isPressed = true
+                    sendDroneCommand(3)
+                }
 
+                MotionEvent.ACTION_UP -> {
+                    v.isPressed = false
+                    sendDroneCommand(0)
+                }
+                else -> {
+                }
+            }
             true
         }
         mTakeOffLandBt?.setOnClickListener(View.OnClickListener {
-            when (mMiniDrone?.flyingState) {
-                ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_ENUM.ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_LANDED -> mMiniDrone?.takeOff()
-                ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_ENUM.ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_FLYING, ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_ENUM.ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_HOVERING -> mMiniDrone?.land()
-                else -> {/*Do Nothing*/
+            if (mMiniDrone != null) {
+                when (mMiniDrone?.flyingState) {
+                    ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_ENUM.ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_LANDED -> mMiniDrone?.takeOff()
+                    ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_ENUM.ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_FLYING, ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_ENUM.ARCOMMANDS_MINIDRONE_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_HOVERING -> mMiniDrone?.land()
+                    else -> {/*Do Nothing*/
+                    }
                 }
             }
         })
@@ -306,30 +338,56 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
 
     private fun connectDrone(): Boolean {
         if (mARService != null) {
-            mBatteryLevelDrone?.setVisibility(View.VISIBLE)
+            mBatteryLevelDrone?.visibility = View.VISIBLE
             mDronePresent = true
-            mMiniDrone = MiniDrone(this, mARService!!)
-            mMiniDrone?.addListener(mMiniDroneListener)
-            if (mMiniDrone != null && ARCONTROLLER_DEVICE_STATE_ENUM.ARCONTROLLER_DEVICE_STATE_RUNNING != mMiniDrone?.getConnectionState()) {
-                mConnectionProgressDialog = ProgressDialog(this, R.style.AppCompatAlertDialogStyle)
-                mConnectionProgressDialog?.setIndeterminate(true)
-                mConnectionProgressDialog?.setMessage("Connecting ...")
-                mConnectionProgressDialog?.setCancelable(false)
-                mConnectionProgressDialog?.show()
-                // if the connection to the MiniDrone fails, finish the activity
-                if (!mMiniDrone!!.connect()) {
-                    Toast.makeText(applicationContext, "Failed to Connect Drone", Toast.LENGTH_LONG).show()
-                    finish()
+            // TODO: How to check drone type:
+            val droneName = mARService?.name?.toLowerCase()
+            Log.e(TAG, "mARService->name: $droneName")
+            if (droneName!!.contains("mambo")) {
+                mMiniDrone = MiniDrone(this, mARService!!)
+                mMiniDrone?.addListener(mMiniDroneListener)
+                if (mMiniDrone != null && ARCONTROLLER_DEVICE_STATE_ENUM.ARCONTROLLER_DEVICE_STATE_RUNNING != mMiniDrone?.getConnectionState()) {
+                    mConnectionProgressDialog = ProgressDialog(this, R.style.AppCompatAlertDialogStyle)
+                    mConnectionProgressDialog?.isIndeterminate = true
+                    mConnectionProgressDialog?.setMessage("Connecting ...")
+                    mConnectionProgressDialog?.setCancelable(false)
+                    mConnectionProgressDialog?.show()
+                    // if the connection to the MiniDrone fails, finish the activity
+                    if (!mMiniDrone!!.connect()) {
+                        Toast.makeText(applicationContext, "Failed to Connect Drone", Toast.LENGTH_LONG).show()
+                        finish()
+                        return false
+                    }
+                    return true
+                } else {
                     return false
                 }
-                return true
-            } else {
-                return false
+            } else if (droneName.contains("diesel")) {
+                buttonS.visibility = View.GONE
+                mJSDrone = JSDrone(this, mARService!!)
+                mJSDrone?.addListener(mJSListener)
+                if (ARCONTROLLER_DEVICE_STATE_ENUM.ARCONTROLLER_DEVICE_STATE_RUNNING != mJSDrone!!.connectionState) {
+                    mConnectionProgressDialog = ProgressDialog(this, R.style.AppCompatAlertDialogStyle)
+                    mConnectionProgressDialog!!.isIndeterminate = true
+                    mConnectionProgressDialog!!.setMessage("Connecting ...")
+                    mConnectionProgressDialog!!.show()
+
+                    // if the connection to the Jumping fails, finish the activity
+                    if (!mJSDrone!!.connect()) {
+                        Toast.makeText(applicationContext, "Failed to Connect Drone", Toast.LENGTH_LONG).show()
+                        finish()
+                        return false
+                    }
+                    return true
+                } else {
+                    return false
+                }
             }
         } else {
             Log.e(TAG, "Drone Service is Null")
             return false
         }
+        return false
     }
 
     private fun executeWheelchairCommand(command: Int) {
@@ -352,6 +410,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
 
     private fun sendDroneCommand(command: Int) {
         if (mDronePresent && mDroneControl && mMiniDrone != null) {
+            Log.e(TAG, "SendingCommand to MiniDrone: $command")
             when (command) {
                 0 -> {
                     // Do nothing/Hover //Reset conditions:
@@ -383,6 +442,39 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
                     mMiniDrone?.setFlag(1.toByte())
                 }
                 else -> {
+                }
+            }
+        }
+        if (mDronePresent && mDroneControl && mJSDrone != null) {
+            Log.e(TAG, "SendingCommand to JSDrone: $command")
+            when (command) {
+                0 -> { //Do Nothing
+                    mJSDrone?.setTurn(0.toByte())
+                    mJSDrone?.setSpeed(0.toByte())
+                    mJSDrone?.setFlag(0.toByte())
+                }
+                1 -> {  //FWD:
+                    mJSDrone?.setSpeed(mJSDroneSpeedFWREV.toByte())
+                    mJSDrone?.setTurn(0.toByte())
+                    mJSDrone?.setFlag(1.toByte())
+                }
+                2 -> { // RIGHT
+                    mJSDrone?.setSpeed(0.toByte())
+                    mJSDrone?.setTurn((mJSDroneSpeedLR).toByte())
+                    mJSDrone?.setFlag(1.toByte())
+                }
+                3 -> { // LEFT
+                    mJSDrone?.setSpeed(0.toByte())
+                    mJSDrone?.setTurn((-mJSDroneSpeedLR).toByte())
+                    mJSDrone?.setFlag(1.toByte())
+                }
+                4, 5 -> {
+                    // No Change in State (ignore command).
+                }
+                else -> {
+                    mJSDrone?.setTurn(0.toByte())
+                    mJSDrone?.setSpeed(0.toByte())
+                    mJSDrone?.setFlag(0.toByte())
                 }
             }
         }
@@ -562,7 +654,12 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             Log.e(TAG, "IOException in saveDataFile")
             e.printStackTrace()
         }
-
+        if (mJSDrone != null) {
+            mJSDrone?.dispose()
+        }
+        if (mMiniDrone != null) {
+            mMiniDrone?.dispose()
+        }
         stopMonitoringRssiValue()
         mNativeInterface.jmainInitialization(true) //Just a technicality, doesn't actually do anything
         super.onDestroy()
@@ -951,19 +1048,23 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             System.arraycopy(mClassificationBuffer, 1, mClassificationBuffer, 0, 4)
             mClassificationBuffer[4] = yTF
             var output = 0
-            if (mMPUClass == 0) {
-                if (allValuesSame(mClassificationBuffer)) {
-                    output = yTF
+            if (mMiniDrone != null) {
+                if (mMPUClass == 0) {
+                    if (allValuesSame(mClassificationBuffer)) {
+                        output = yTF
+                    }
+                } else {
+                    output = mMPUClass
                 }
             } else {
-                output = mMPUClass
+                output = yTF
             }
             sendDroneCommand(output)
             executeWheelchairCommand(output)
-            Log.e(TAG, "Drone Class Output: " + output)
+            Log.e(TAG, "Drone Class Output: $output")
             mNumberOfClassifierCalls++
             val s = Arrays.toString(mClassificationBuffer) + " - MPU: [$mMPUClass]"
-            val outputStr = "Output: [" + output + "]"
+            val outputStr = "Output: [ $output ]"
             runOnUiThread {
                 mYfitTextView!!.text = s
                 mEMGClassText?.text = outputStr
@@ -989,13 +1090,8 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
 
     private fun addToGraphBuffer(dataChannel: DataChannel, graphAdapter: GraphAdapter?, updateTrainingRoutine: Boolean) {
         if (mFilterData && dataChannel.totalDataPointsReceived > 1000) {
-//            val filteredData = mNativeInterface.jSSVEPCfilter(dataChannel.classificationBuffer)
             graphAdapter!!.clearPlot()
-
-//            for (i in filteredData.indices) { // gA.addDataPointTimeDomain(y,x)
-//                graphAdapter.addDataPointTimeDomainAlt(filteredData[i].toDouble(),
-//                        dataChannel.totalDataPointsReceived - 999 + i)
-//            }
+            // TODO: Implement
         } else {
             if (dataChannel.dataBuffer != null) {
                 if (mPrimarySaveDataFile!!.resolutionBits == 24) {
@@ -1360,6 +1456,53 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
                 mDownloadProgressDialog?.dismiss()
                 mDownloadProgressDialog = null
             }
+        }
+    }
+
+    private val mJSListener = object : JSDrone.Listener {
+        override fun onDroneConnectionChanged(state: ARCONTROLLER_DEVICE_STATE_ENUM) {
+            when (state) {
+                ARCONTROLLER_DEVICE_STATE_ENUM.ARCONTROLLER_DEVICE_STATE_RUNNING -> mConnectionProgressDialog?.dismiss()
+
+                ARCONTROLLER_DEVICE_STATE_ENUM.ARCONTROLLER_DEVICE_STATE_STOPPED -> {
+                    // if the deviceController is stopped, go back to the previous activity
+                    mConnectionProgressDialog?.dismiss()
+                    finish()
+                }
+
+                else -> {
+                }
+            }
+        }
+
+        override fun onBatteryChargeChanged(batteryPercentage: Int) {
+        }
+
+        override fun onPictureTaken(error: ARCOMMANDS_JUMPINGSUMO_MEDIARECORDEVENT_PICTUREEVENTCHANGED_ERROR_ENUM) {
+            Log.i(TAG, "Picture has been taken")
+        }
+
+        override fun configureDecoder(codec: ARControllerCodec) {}
+
+        override fun onFrameReceived(frame: ARFrame) {
+        }
+
+        override fun onAudioStateReceived(inputEnabled: Boolean, outputEnabled: Boolean) {
+        }
+
+        override fun configureAudioDecoder(codec: ARControllerCodec) {
+        }
+
+        override fun onAudioFrameReceived(frame: ARFrame) {
+        }
+
+        override fun onMatchingMediasFound(nbMedias: Int) {
+        }
+
+        override fun onDownloadProgressed(mediaName: String, progress: Int) {
+        }
+
+        override fun onDownloadComplete(mediaName: String) {
         }
     }
 

@@ -203,13 +203,6 @@ class MainActivity : Activity() {
          * dialog to ask permission enable
          */
         if (checkPermissions()) {
-//            if (!mBluetoothAdapter!!.isEnabled) {
-//                if (!mBluetoothAdapter!!.isEnabled) {
-//                    val enableBt = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
-//                    startActivityForResult(enableBt, REQUEST_ENABLE_BT)
-//                }
-//            }
-//            scanLeDevice(true)
             //Search for drones first:
             mDroneDiscoverer?.setup()
             mDroneDiscoverer?.addListener(mDiscovererListener)
@@ -261,7 +254,8 @@ class MainActivity : Activity() {
             Log.e(TAG, "Current DroneList Update: " + mDronesList.size.toString())
             for (service in dronesList) {
                 Log.e(TAG, service.name)
-                if (service.name.toLowerCase().contains("mambo")) {
+                val serviceName = service.name.toLowerCase()
+                if (serviceName.contains("mambo") || serviceName.contains("diesel")) {
                     selectedArDiscoveryDeviceService = service
                     mDroneDiscoverer?.stopDiscovering()
                     mDroneDiscoverer?.cleanup()

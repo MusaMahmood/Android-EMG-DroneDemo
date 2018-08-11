@@ -142,6 +142,13 @@
             android:text="TakeOff" />
 
         <Button
+            android:id="@+id/buttonL"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="L" />
+
+        <Button
             android:id="@+id/buttonFwd"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
