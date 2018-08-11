@@ -2,13 +2,7 @@ package com.yeolabgt.mahmoodms.emgdronedemo
 
 import android.app.Activity
 import android.app.ProgressDialog
-import android.bluetooth.BluetoothDevice
-import android.bluetooth.BluetoothGatt
-import android.bluetooth.BluetoothGattCharacteristic
-import android.bluetooth.BluetoothGattDescriptor
-import android.bluetooth.BluetoothGattService
-import android.bluetooth.BluetoothManager
-import android.bluetooth.BluetoothProfile
+import android.bluetooth.*
 import android.content.Context
 import android.content.DialogInterface
 import android.content.Intent
@@ -25,8 +19,10 @@ import android.support.v4.app.NavUtils
 import android.support.v4.content.FileProvider
 import android.util.Log
 import android.view.*
-import android.widget.*
-
+import android.widget.Button
+import android.widget.TextView
+import android.widget.Toast
+import android.widget.ToggleButton
 import com.androidplot.util.Redrawer
 import com.parrot.arsdk.arcommands.ARCOMMANDS_JUMPINGSUMO_MEDIARECORDEVENT_PICTUREEVENTCHANGED_ERROR_ENUM
 import com.parrot.arsdk.arcommands.ARCOMMANDS_MINIDRONE_MEDIARECORDEVENT_PICTUREEVENTCHANGED_ERROR_ENUM
@@ -41,7 +37,6 @@ import com.yeolabgt.mahmoodms.emgdronedemo.ParrotDrone.MiniDrone
 import kotlinx.android.synthetic.main.activit_dev_ctrl_alt.*
 import org.tensorflow.contrib.android.TensorFlowInferenceInterface
 import java.io.File
-
 import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.*
