@@ -1,10 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:ap="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#FFFFFF">
+    android:background="#FFFFFF"
+    tools:context=".DeviceControlActivity">
 
 
     <TextView
@@ -15,9 +17,16 @@
         android:textSize="18sp" />
 
     <LinearLayout
-        android:layout_width="match_parent"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/connectPresenterBT"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="0.1"
+            android:text="Presenter" />
 
         <ToggleButton
             android:id="@+id/toggleButtonCh1"
@@ -86,8 +95,7 @@
         android:layout_height="wrap_content"
         android:gravity="center"
         android:orientation="horizontal"
-        android:layout_weight="1"
-        >
+        android:layout_weight="1">
 
         <com.androidplot.xy.XYPlot
             android:id="@+id/emgTimeDomainXYPlot"
@@ -97,13 +105,14 @@
             android:layout_weight="0.4"
             ap:renderMode="use_background_thread" />
 
-        <com.androidplot.xy.XYPlot
-            android:id="@+id/motionDataPlot"
-            style="@style/APFullScreenGraph.Light.Minimalist"
-            android:layout_width="fill_parent"
-            android:layout_height="fill_parent"
-            android:layout_weight="0.4"
-            ap:renderMode="use_background_thread" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/connector_content"
+        android:layout_width="match_parent"
+        android:layout_height="400dp"
+        android:orientation="horizontal"
+        android:visibility="gone">
 
     </LinearLayout>
 

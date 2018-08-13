@@ -66,7 +66,7 @@ public class DeviceSelector extends Fragment {
     /**
      * Return values of this fragment
      */
-    interface DeviceListResultListener {
+    public interface DeviceListResultListener {
         /**
          * This method is called once a device was selected from device list
          *

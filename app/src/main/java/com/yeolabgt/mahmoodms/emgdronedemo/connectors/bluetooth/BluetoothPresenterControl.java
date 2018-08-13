@@ -56,7 +56,7 @@ public class BluetoothPresenterControl extends RemoteControl {
      *
      * @param handler A handler to receive connection results
      */
-    BluetoothPresenterControl(Handler handler) {
+    public BluetoothPresenterControl(Handler handler) {
         super(handler);
         mAdapter = BluetoothAdapter.getDefaultAdapter();
     }
@@ -64,7 +64,7 @@ public class BluetoothPresenterControl extends RemoteControl {
     /**
      * Start the presenter service. Called by the Activity onResume()
      */
-    synchronized void start() {
+    public synchronized void start() {
         // Cancel any thread attempting to make a connection
         if (mConnectThread != null) {
             mConnectThread.cancel();
@@ -83,7 +83,7 @@ public class BluetoothPresenterControl extends RemoteControl {
      *
      * @param device The BluetoothDevice to connect
      */
-    synchronized void connect(BluetoothDevice device) {
+    public synchronized void connect(BluetoothDevice device) {
         if (BuildConfig.DEBUG) {
             Log.d(TAG, "connect to: " + device);
         }
@@ -134,7 +134,7 @@ public class BluetoothPresenterControl extends RemoteControl {
     /**
      * Stop all threads
      */
-    synchronized void stop() {
+    public synchronized void stop() {
         mState = ServiceState.NONE;
 
         if (mConnectThread != null) {
@@ -200,7 +200,7 @@ public class BluetoothPresenterControl extends RemoteControl {
     }
 
     @Override
-    protected void disconnect() {
+    public void disconnect() {
         // This will signal the reader thread to stop reading
         mState = ServiceState.NONE;
         if (mConnectedThread != null) {
@@ -382,4 +382,5 @@ public class BluetoothPresenterControl extends RemoteControl {
             }
         }
     }
+
 }

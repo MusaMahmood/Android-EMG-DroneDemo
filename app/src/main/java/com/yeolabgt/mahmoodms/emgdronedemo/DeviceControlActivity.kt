@@ -1,5 +1,6 @@
 package com.yeolabgt.mahmoodms.emgdronedemo
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.ProgressDialog
 import android.bluetooth.*
@@ -13,6 +14,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
 import android.os.Handler
+import android.os.Message
 import android.support.v4.app.NavUtils
 import android.support.v4.content.FileProvider
 import android.util.Log
@@ -32,13 +34,17 @@ import com.parrot.arsdk.ardiscovery.ARDiscoveryDeviceService
 import com.yeolabgt.mahmoodms.actblelibrary.ActBle
 import com.yeolabgt.mahmoodms.emgdronedemo.ParrotDrone.JSDrone
 import com.yeolabgt.mahmoodms.emgdronedemo.ParrotDrone.MiniDrone
+import com.yeolabgt.mahmoodms.emgdronedemo.connectors.Command
+import com.yeolabgt.mahmoodms.emgdronedemo.connectors.RemoteControl
 import com.yeolabgt.mahmoodms.emgdronedemo.connectors.bluetooth.BluetoothPresenterControl
+import com.yeolabgt.mahmoodms.emgdronedemo.connectors.bluetooth.DeviceSelector
 import kotlinx.android.synthetic.main.activit_dev_ctrl_alt.*
 import org.tensorflow.contrib.android.TensorFlowInferenceInterface
 import java.io.File
 import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.*
+import javax.crypto.spec.RC2ParameterSpec
 import kotlin.experimental.and
 import kotlin.experimental.or
 
@@ -47,7 +53,7 @@ import kotlin.experimental.or
  * Android Activity for Controlling Bluetooth LE Device Connectivity
  */
 
-class DeviceControlActivity : Activity(), ActBle.ActBleListener {
+class DeviceControlActivity : Activity(), ActBle.ActBleListener, DeviceSelector.DeviceListResultListener {
     // Graphing Variables:
     private var mGraphInitializedBoolean = false
     private var mGraphAdapterCh1: GraphAdapter? = null
@@ -55,7 +61,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
     private var mGraphAdapterMotionAY: GraphAdapter? = null
     private var mGraphAdapterMotionAZ: GraphAdapter? = null
     private var mTimeDomainPlotAdapterCh1: XYPlotAdapter? = null
-    private var mMotionDataPlotAdapter: XYPlotAdapter? = null
+//    private var mMotionDataPlotAdapter: XYPlotAdapter? = null
     private var mCh1: DataChannel? = null
     //Device Information
     private var mBleInitializedBoolean = false
@@ -131,7 +137,13 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
 
     private var mAudioState = AudioState.MUTE
 
-    // TODO: Presenter Stuff:
+    private val timeStamp: String
+        get() = SimpleDateFormat("yyyy.MM.dd_HH.mm.ss", Locale.US).format(Date())
+
+    // Native Interface Function Handler:
+    private val mNativeInterface = NativeInterfaceClass()
+
+    // Presenter Stuff:
     /**
      * Local Bluetooth adapter.
      */
@@ -166,25 +178,101 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
 
             if (BluetoothAdapter.ACTION_STATE_CHANGED == action && intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR) == BluetoothAdapter.STATE_OFF) {
                 //Device has disconnected
-                Toast.makeText(this@DeviceControlActivity, "Bluetooth is required!", Toast.LENGTH_LONG).show()
+                Toast.makeText(this@DeviceControlActivity, R.string.bluetooth_required_leaving,
+                        Toast.LENGTH_LONG).show()
                 this@DeviceControlActivity.finish()
             }
         }
     }
 
+    /**
+     * The handler reacts on status changes of our service.
+     */
+    @SuppressLint("HandlerLeak") // We don't leak any handlers here
+    private val mHandler = object : Handler() {
+        val connectingFragment = Connecting()
+        val deviceSelectorFragment = DeviceSelector()
+        override fun handleMessage(msg: Message) {
+            if (msg.what == RemoteControl.ServiceState.CONNECTED.ordinal) {
+                if (msg.data.getBoolean(RemoteControl.RESULT_VALUES[0])) {
+                    // If connection succeeded
+                    Toast.makeText(this@DeviceControlActivity,
+                            this@DeviceControlActivity.getString(R.string.bluetooth_connected,
+                                    msg.data.getString(
+                                            BluetoothPresenterControl.RESULT_VALUES[1])),
+                            Toast.LENGTH_SHORT).show()
 
-    private val timeStamp: String
-        get() = SimpleDateFormat("yyyy.MM.dd_HH.mm.ss", Locale.US).format(Date())
+                    // Remove "connecting" fragment
+                    fragmentManager.beginTransaction().remove(connectingFragment).commit()
+                    fragmentManager.beginTransaction().remove(deviceSelectorFragment).commit()
+                    if (fragmentManager.backStackEntryCount > 0) {
+                        fragmentManager.popBackStack()
+                    }
+                    runOnUiThread {
+                        val params = connector_content.layoutParams
+                        params.height = 0
+                        params.width = 0
+                        connector_content.layoutParams = params
+                    }
 
-    // Native Interface Function Handler:
-    private val mNativeInterface = NativeInterfaceClass()
+                    // show presenter fragment
+                    mPresenterVisible = true
+                    return
+                } else {
+                    Toast.makeText(this@DeviceControlActivity,
+                            getString(R.string.bluetooth_not_connected),
+                            Toast.LENGTH_SHORT).show()
+                }
+
+            } else if (msg.what == RemoteControl.ServiceState.CONNECTING.ordinal) {
+                // show "connecting" fragment
+                if (fragmentManager.backStackEntryCount > 0) {
+                    fragmentManager.popBackStack()
+                }
+                setTitle(R.string.connecting_to_service)
+                val transaction = fragmentManager.beginTransaction()
+                transaction.add(R.id.connector_content, connectingFragment)
+                transaction.addToBackStack(null)
+                transaction.commit()
+
+                return
+
+            } else if (msg.what == RemoteControl.ServiceState.ERROR.ordinal) {
+                val error_type = RemoteControl.ERROR_TYPES.valueOf(
+                        msg.data.getString(RemoteControl.RESULT_VALUES[2]))
+
+                var errorMessage = ""
+
+                when (error_type) {
+                    RemoteControl.ERROR_TYPES.VERSION -> errorMessage = getString(R.string.incompatible_server_version)
+                    RemoteControl.ERROR_TYPES.PARSING -> errorMessage = getString(R.string.parsing_error)
+                }
+
+                Toast.makeText(this@DeviceControlActivity, errorMessage, Toast.LENGTH_LONG).show()
+
+            } else if (msg.what == RemoteControl.ServiceState.NONE.ordinal) {
+                Toast.makeText(this@DeviceControlActivity,
+                        this@DeviceControlActivity.getString(R.string.connection_lost),
+                        Toast.LENGTH_LONG).show()
+            }
+
+            if (fragmentManager.backStackEntryCount > 0) {
+                if (mBluetoothConnectorVisible) {
+                    fragmentManager.popBackStack()
+                }
+
+                mPresenterVisible = false
+            }
+
+            setTitle(R.string.title_device_selector)
+        }
+    }
 
     public override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activit_dev_ctrl_alt)
         //Set orientation of device based on screen type/size:
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-        //Receive Intents:
         //Receive Intents:
         val intent = intent
         deviceMacAddresses = intent.getStringArrayExtra(MainActivity.INTENT_DEVICES_KEY)
@@ -257,6 +345,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
                     v.isPressed = true
                     sendDroneCommand(1)
                     executeWheelchairCommand(1)
+                    mPresenterControl?.sendCommand(Command.NEXT_SLIDE)
                 }
 
                 MotionEvent.ACTION_UP -> {
@@ -277,6 +366,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
 //                    mMiniDrone?.setYaw(50.toByte())
                     sendDroneCommand(2)
                     executeWheelchairCommand(3)
+                    mPresenterControl?.sendCommand(Command.PREV_SLIDE)
                 }
 
                 MotionEvent.ACTION_UP -> {
@@ -295,6 +385,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
                 MotionEvent.ACTION_DOWN -> {
                     v.isPressed = true
                     sendDroneCommand(3)
+                    mPresenterControl?.sendCommand(Command.BEGIN)
                 }
 
                 MotionEvent.ACTION_UP -> {
@@ -334,6 +425,53 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
         })
         mARService = intent.getParcelableExtra(MainActivity.EXTRA_DRONE_SERVICE)
         initializeTensorflowInterface()
+
+        // TODO: Presenter Stuff:
+        mSettings = Settings(this)
+        // Get local Bluetooth adapter
+        mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
+
+        // If the adapter is null, then Bluetooth is not supported
+        if (mBluetoothAdapter == null) {
+            Toast.makeText(this, R.string.bluetooth_not_available, Toast.LENGTH_LONG).show()
+            this.finish()
+            return
+        }
+
+        val disconnectFilter = IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED)
+        this.registerReceiver(mReceiver, disconnectFilter)
+        connectPresenterBT.setOnClickListener {
+            mPresenterVisible = false
+            mBluetoothConnectorVisible = true
+            connector_content.visibility = View.VISIBLE
+
+            if (mPresenterControl == null) {
+                mPresenterControl = BluetoothPresenterControl(mHandler)
+            }
+
+            if (mPresenterControl != null) {
+                //TODO remove fragments if present
+                if (mPresenterControl?.state == RemoteControl.ServiceState.CONNECTED) {
+                    connector_content.visibility = View.GONE
+                    // TODO: mPC should be ready to control now.
+                    mPresenterVisible = true
+                } else if (mPresenterControl?.state == RemoteControl.ServiceState.CONNECTING) {
+                    // Show "connecting fragment"
+//                    val transaction = fragmentManager.beginTransaction()
+//                    val fragment = Connecting()
+//                    transaction.add(R.id.connector_content, fragment)
+//                    transaction.addToBackStack(null)
+//                    transaction.commit()
+                } else {
+                    //Show device selector
+                    setTitle(R.string.title_device_selector)
+                    val transaction = fragmentManager.beginTransaction()
+                    val fragment = DeviceSelector()
+                    transaction.add(R.id.connector_content, fragment)
+                    transaction.commit()
+                }
+            }
+        }
     }
 
     private fun initializeTensorflowInterface() {
@@ -444,7 +582,31 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
         }
     }
 
+    private var presentationStarted = false
+
     private fun sendDroneCommand(command: Int) {
+        if (mPresenterControl != null) {
+            when (command) {
+                0 -> {
+
+                }//nothing
+                1 -> mPresenterControl!!.sendCommand(Command.NEXT_SLIDE)
+                2 -> mPresenterControl!!.sendCommand(Command.PREV_SLIDE)
+                3 -> {
+                    when (presentationStarted) {
+                        true -> {
+                            mPresenterControl!!.sendCommand(Command.ESCAPE)
+                            presentationStarted = false
+                        }
+                        else -> {
+                            mPresenterControl!!.sendCommand(Command.BEGIN)
+                            presentationStarted = true
+                        }
+                    }
+                }
+            }
+        }
+
         if (mDronePresent && mDroneControl && mMiniDrone != null) {
             Log.e(TAG, "SendingCommand to MiniDrone: $command")
             when (command) {
@@ -553,6 +715,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
     }
 
     override fun onPause() {
+        mBluetoothConnectorVisible = false
         if (mRedrawer != null) mRedrawer!!.pause()
         super.onPause()
     }
@@ -653,11 +816,11 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             mTimeDomainPlotAdapterCh1!!.xyPlot!!.addSeries(mGraphAdapterCh1!!.series, mGraphAdapterCh1!!.lineAndPointFormatter)
         }
 
-        mMotionDataPlotAdapter = XYPlotAdapter(findViewById(R.id.motionDataPlot), "Time (s)", "Acc (g)", 2.0)
-        mMotionDataPlotAdapter?.xyPlot!!.addSeries(mGraphAdapterMotionAX?.series, mGraphAdapterMotionAX?.lineAndPointFormatter)
-        mMotionDataPlotAdapter?.xyPlot!!.addSeries(mGraphAdapterMotionAY?.series, mGraphAdapterMotionAY?.lineAndPointFormatter)
-        mMotionDataPlotAdapter?.xyPlot!!.addSeries(mGraphAdapterMotionAZ?.series, mGraphAdapterMotionAZ?.lineAndPointFormatter)
-        val xyPlotList = listOf(mTimeDomainPlotAdapterCh1?.xyPlot, mMotionDataPlotAdapter?.xyPlot)
+//        mMotionDataPlotAdapter = XYPlotAdapter(findViewById(R.id.motionDataPlot), "Time (s)", "Acc (g)", 2.0)
+//        mMotionDataPlotAdapter?.xyPlot!!.addSeries(mGraphAdapterMotionAX?.series, mGraphAdapterMotionAX?.lineAndPointFormatter)
+//        mMotionDataPlotAdapter?.xyPlot!!.addSeries(mGraphAdapterMotionAY?.series, mGraphAdapterMotionAY?.lineAndPointFormatter)
+//        mMotionDataPlotAdapter?.xyPlot!!.addSeries(mGraphAdapterMotionAZ?.series, mGraphAdapterMotionAZ?.lineAndPointFormatter)
+        val xyPlotList = listOf(mTimeDomainPlotAdapterCh1?.xyPlot)
         mRedrawer = Redrawer(xyPlotList, 30f, false)
         mRedrawer!!.start()
         mGraphInitializedBoolean = true
@@ -698,7 +861,11 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
         }
         stopMonitoringRssiValue()
         mNativeInterface.jmainInitialization(true) //Just a technicality, doesn't actually do anything
+        this.unregisterReceiver(mReceiver)
         super.onDestroy()
+        if (mPresenterControl != null) {
+            mPresenterControl!!.stop()
+        }
     }
 
     private fun disconnectAllBLE() {
@@ -851,6 +1018,12 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
             Log.e(TAG, "SettingsNew: " + DataChannel.byteArrayToHexString(registerConfigBytes))
             writeNewADS1299Settings(registerConfigBytes)
         }
+        if (requestCode == REQUEST_ENABLE_BT && resultCode != Activity.RESULT_OK) {
+            // User did not enable Bluetooth or an error occurred
+            Toast.makeText(this, R.string.bluetooth_required_leaving,
+                    Toast.LENGTH_LONG).show()
+            this.finish()
+        }
         super.onActivityResult(requestCode, resultCode, data)
     }
 
@@ -859,7 +1032,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
         if (mEEGConfigGattService != null) {
             Log.e(TAG, "SendingCommand (byte): " + DataChannel.byteArrayToHexString(bytes))
             mActBle!!.writeCharacteristic(mBluetoothGattArray[mEEGConfigGattIndex]!!, mEEGConfigGattService!!.getCharacteristic(AppConstant.CHAR_EEG_CONFIG), bytes)
-            //Should notify/update after writing
+            // Should notify/update after writing
         }
     }
 
@@ -1093,7 +1266,9 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
                     output = mMPUClass
                 }
             } else {
-                output = yTF
+                if (allValuesSame(mClassificationBuffer)) {
+                    output = yTF
+                }
             }
             sendDroneCommand(output)
             executeWheelchairCommand(output)
@@ -1542,7 +1717,43 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
         }
     }
 
+    override fun onDeviceSelected(address: String) {
+        // Get the BluetoothDevice object
+        val device = mBluetoothAdapter!!.getRemoteDevice(address)
+        // Attempt to connect to the device
+        mPresenterControl!!.connect(device)
+    }
+
+    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+        // Ignore volume key events if volume keys are used for navigation and
+        // presenter fragment is active
+        return (mSettings!!.useVolumeKeysForNavigation() && mPresenterVisible
+                && (keyCode == KeyEvent.KEYCODE_VOLUME_UP || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN)) || super.onKeyDown(keyCode, event)
+    }
+
+    override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
+        // Handle volume key usage for navigation
+        if (mSettings!!.useVolumeKeysForNavigation() && mPresenterVisible) {
+            if (keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
+//                onNextSlide()
+                return true
+            } else if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
+//                onPrevSlide()
+                return true
+            }
+        }
+        return super.onKeyUp(keyCode, event)
+    }
+
+    override fun onBackPressed() {
+        mPresenterVisible = false
+        mPresenterControl!!.disconnect()
+        setTitle(R.string.title_device_selector)
+        super.onBackPressed()
+    }
+
     companion object {
+        private val REQUEST_ENABLE_BT = 2
         val HZ = "0 Hz"
         private val TAG = DeviceControlActivity::class.java.simpleName
         var mRedrawer: Redrawer? = null

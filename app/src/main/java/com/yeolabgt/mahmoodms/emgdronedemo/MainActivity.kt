@@ -168,10 +168,6 @@ class MainActivity : Activity() {
                 }
             }
         }
-        connectPresenterBT.setOnClickListener {
-            val intent = Intent(this@MainActivity, BluetoothConnector::class.java)
-            startActivity(intent)
-        }
         //Drone Stuff:
         mDroneDiscoverer = DroneDiscoverer(this)
     }
