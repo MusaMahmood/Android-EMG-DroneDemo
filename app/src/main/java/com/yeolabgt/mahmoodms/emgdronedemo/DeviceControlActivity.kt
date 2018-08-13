@@ -345,7 +345,6 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener, DeviceSelector.
                     v.isPressed = true
                     sendDroneCommand(1)
                     executeWheelchairCommand(1)
-                    mPresenterControl?.sendCommand(Command.NEXT_SLIDE)
                 }
 
                 MotionEvent.ACTION_UP -> {
@@ -366,7 +365,6 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener, DeviceSelector.
 //                    mMiniDrone?.setYaw(50.toByte())
                     sendDroneCommand(2)
                     executeWheelchairCommand(3)
-                    mPresenterControl?.sendCommand(Command.PREV_SLIDE)
                 }
 
                 MotionEvent.ACTION_UP -> {
@@ -385,7 +383,6 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener, DeviceSelector.
                 MotionEvent.ACTION_DOWN -> {
                     v.isPressed = true
                     sendDroneCommand(3)
-                    mPresenterControl?.sendCommand(Command.BEGIN)
                 }
 
                 MotionEvent.ACTION_UP -> {
