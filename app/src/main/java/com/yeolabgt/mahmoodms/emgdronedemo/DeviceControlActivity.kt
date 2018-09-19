@@ -110,6 +110,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener, DeviceSelector.
     private var mTFInferenceInterface: TensorFlowInferenceInterface? = null
     private var mTensorflowWindowSize = 128
     private val mClassificationBuffer = IntArray(5)
+    private val mPresenterBuffer = IntArray(3)
 
     //Drone Interface Stuff:
     private var mMiniDrone: MiniDrone? = null
@@ -581,7 +582,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener, DeviceSelector.
 
     private var presentationStarted = false
 
-    private fun sendDroneCommand(command: Int) {
+    private fun sendPresenterCommand(command: Int) {
         if (mPresenterControl != null) {
             when (command) {
                 0 -> {
@@ -603,7 +604,9 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener, DeviceSelector.
                 }
             }
         }
+    }
 
+    private fun sendDroneCommand(command: Int) {
         if (mDronePresent && mDroneControl && mMiniDrone != null) {
             Log.e(TAG, "SendingCommand to MiniDrone: $command")
             when (command) {
@@ -1269,10 +1272,22 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener, DeviceSelector.
             }
             sendDroneCommand(output)
             executeWheelchairCommand(output)
+            // Presenter - extra buffer:
+            mPresenterBuffer[2] = output
+
+            Log.e(TAG, "mPresenterBuffer: ${Arrays.toString(mPresenterBuffer)}")
+            if (mPresenterBuffer[2] != 0 && mPresenterBuffer[1] == 0 && mPresenterBuffer[0] == 0) {
+                //No change
+            } else {
+                output = 0
+            }
+            sendPresenterCommand(output)
+            System.arraycopy(mPresenterBuffer, 1, mPresenterBuffer, 0, 2)
             Log.e(TAG, "Drone Class Output: $output")
-            mNumberOfClassifierCalls++
-            val s = Arrays.toString(mClassificationBuffer) + " - MPU: [$mMPUClass]"
+            val s = Arrays.toString(mClassificationBuffer)
+            // - ${Arrays.toString(mPresenterBuffer)}
             val outputStr = "Output: [ $output ]"
+            mNumberOfClassifierCalls++
             runOnUiThread {
                 mYfitTextView!!.text = s
                 mEMGClassText?.text = outputStr
