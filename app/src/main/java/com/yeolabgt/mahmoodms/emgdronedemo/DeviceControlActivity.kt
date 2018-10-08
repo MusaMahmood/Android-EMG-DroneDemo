@@ -1356,7 +1356,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener, DeviceSelector.
             val second = dataPoints / mSampleRate
             val mSDS = 10
             var eventSecondCountdown = 0
-            if (second >= 0 && second < mSDS) {
+            if (second in 0..(mSDS - 1)) {
                 eventSecondCountdown = mSDS - second
                 updateTrainingPrompt("Relax hand")
                 updateTrainingPromptColor(Color.GREEN)
@@ -1372,7 +1372,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener, DeviceSelector.
                 mEMGClass = 0.0
             } else if (second >= 3 * mSDS && second < 4 * mSDS) {
                 eventSecondCountdown = 4 * mSDS - second
-                updateTrainingPrompt("Rotate Hand")
+                updateTrainingPrompt("Close Index Finger")
                 mEMGClass = 2.0
             } else if (second >= 4 * mSDS && second < 5 * mSDS) {
                 eventSecondCountdown = 5 * mSDS - second
@@ -1381,7 +1381,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener, DeviceSelector.
                 mEMGClass = 0.0
             } else if (second >= 5 * mSDS && second < 6 * mSDS) {
                 eventSecondCountdown = 6 * mSDS - second
-                updateTrainingPrompt("Forwards & Backwards")
+                updateTrainingPrompt("Wrist Flexion")
                 updateTrainingPromptColor(Color.GREEN)
                 mEMGClass = 3.0
             } else if (second >= 6 * mSDS && second < 7 * mSDS) {

@@ -24,7 +24,7 @@ project.ext.ASSET_DIR = getProjectDir().toString() + '/assets'
 
 android {
     compileSdkVersion 26
-    buildToolsVersion '27.0.3'
+    buildToolsVersion '28.0.2'
     defaultConfig {
         applicationId "com.yeolabgt.mahmoodms.emgdronedemo"
         minSdkVersion 22
@@ -99,5 +99,5 @@ dependencies {
     }
 
     //Parrot Drones SDK
-    compile 'com.parrot:arsdk:3.13.0'
+    api 'com.parrot:arsdk:3.13.0'
 }
