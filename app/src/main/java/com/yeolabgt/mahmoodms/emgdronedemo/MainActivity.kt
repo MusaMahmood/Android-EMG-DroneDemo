@@ -255,7 +255,8 @@ class MainActivity : Activity() {
             for (service in dronesList) {
                 Log.e(TAG, service.name)
                 val serviceName = service.name.toLowerCase()
-                if (serviceName.contains("mambo") || serviceName.contains("diesel")) {
+                if (serviceName.contains("mambo") || serviceName.contains("diesel")
+                        || serviceName.contains("black") || serviceName.contains("sumo")) {
                     selectedArDiscoveryDeviceService = service
                     mDroneDiscoverer?.stopDiscovering()
                     mDroneDiscoverer?.cleanup()
