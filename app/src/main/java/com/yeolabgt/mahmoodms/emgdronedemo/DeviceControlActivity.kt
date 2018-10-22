@@ -357,7 +357,7 @@ class DeviceControlActivity : Activity(), ActBle.ActBleListener {
                 } else {
                     return false
                 }
-            } else if (droneName.contains("diesel")) {
+            } else if (droneName.contains("diesel") || droneName.contains("sumo") || droneName.contains("black")) {
                 buttonS.visibility = View.GONE
                 mJSDrone = JSDrone(this, mARService!!)
                 mJSDrone?.addListener(mJSListener)
